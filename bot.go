@@ -174,11 +174,13 @@ func (bot *Bot) newMessageHandler(s *discordgo.Session, m *discordgo.MessageCrea
 			return
 		}
 
-		var mapperId int
-		mapperId, err = strconv.Atoi(parts[1])
+		var mapper User
+		mapperName := strings.Join(parts[1:], " ")
+		mapper, err = bot.api.GetUser(mapperName)
 		if err != nil {
 			return
 		}
+		mapperId := mapper.Id
 
 		err = bot.db.ChannelTrackMapper(m.ChannelID, mapperId, 3)
 		if err != nil {
@@ -191,6 +193,7 @@ func (bot *Bot) newMessageHandler(s *discordgo.Session, m *discordgo.MessageCrea
 		}()
 
 		bot.MessageReactionAdd(m.ChannelID, m.ID, "\xf0\x9f\x91\x8d")
+		bot.ChannelMessageSend(m.ChannelID, fmt.Sprintf("subscribed to %+v", mapper))
 	}
 
 	return

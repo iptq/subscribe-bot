@@ -159,8 +159,8 @@ func (api *Osuapi) BeatmapsetDownload(beatmapSetId int) (path string, err error)
 	return
 }
 
-func (api *Osuapi) GetUser(userId int) (user User, err error) {
-	url := fmt.Sprintf("/users/%d", userId)
+func (api *Osuapi) GetUser(userId string) (user User, err error) {
+	url := fmt.Sprintf("/users/%s", userId)
 	err = api.Request("GET", url, &user)
 	if err != nil {
 		return
