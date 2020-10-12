@@ -17,6 +17,7 @@ type Bot struct {
 	*discordgo.Session
 	mentionRe *regexp.Regexp
 	db        *Db
+	api       *Osuapi
 	requests  chan int
 }
 
@@ -37,7 +38,7 @@ func NewBot(token string, db *Db, requests chan int) (bot *Bot, err error) {
 		return
 	}
 
-	bot = &Bot{s, re, db, requests}
+	bot = &Bot{s, re, db, db.api, requests}
 	s.AddHandler(bot.errWrap(bot.newMessageHandler))
 	return
 }
@@ -64,6 +65,89 @@ func (bot *Bot) errWrap(fn interface{}) interface{} {
 		return []reflect.Value{}
 	})
 	return newFunc.Interface()
+}
+
+func (bot *Bot) NotifyNewEvent(channelId string, newMaps []Event) (err error) {
+	for _, event := range newMaps {
+		var (
+			gotBeatmapInfo       = false
+			beatmapSet           Beatmapset
+			gotDownloadedBeatmap = false
+			downloadedBeatmap    BeatmapsetDownloaded
+		)
+		beatmapSet, err = bot.getBeatmapsetInfo(event)
+		if err != nil {
+			log.Println("failed to retrieve beatmap info:", err)
+		} else {
+			gotBeatmapInfo = true
+			downloadedBeatmap, err = bot.downloadBeatmap(&beatmapSet)
+			if err != nil {
+				log.Println("failed to download beatmap:", err)
+			} else {
+				gotDownloadedBeatmap = true
+			}
+		}
+
+		log.Println("BEATMAP SET", beatmapSet)
+		embed := &discordgo.MessageEmbed{
+			URL:       "https://osu.ppy.sh" + event.Beatmapset.URL,
+			Title:     event.Type + ": " + event.Beatmapset.Title,
+			Timestamp: event.CreatedAt,
+			Footer: &discordgo.MessageEmbedFooter{
+				Text: fmt.Sprintf("Event ID: %d", event.ID),
+			},
+		}
+		if gotBeatmapInfo {
+			embed.Author = &discordgo.MessageEmbedAuthor{
+				URL:  "https://osu.ppy.sh/u/" + strconv.Itoa(beatmapSet.UserId),
+				Name: beatmapSet.Creator,
+				IconURL: fmt.Sprintf(
+					"https://a.ppy.sh/%d?%d.png",
+					beatmapSet.UserId,
+					time.Now().Unix,
+				),
+			}
+			embed.Thumbnail = &discordgo.MessageEmbedThumbnail{
+				URL: beatmapSet.Covers.SlimCover2x,
+			}
+
+			if gotDownloadedBeatmap {
+				log.Println(downloadedBeatmap)
+			}
+		}
+		bot.ChannelMessageSendEmbed(channelId, embed)
+	}
+
+	return
+}
+
+type BeatmapsetDownloaded struct {
+	Path string
+}
+
+func (bot *Bot) downloadBeatmap(beatmapSet *Beatmapset) (downloadedBeatmap BeatmapsetDownloaded, err error) {
+	beatmapFile, err := bot.api.BeatmapsetDownload(beatmapSet.Id)
+	if err != nil {
+		return
+	}
+
+	downloadedBeatmap.Path = beatmapFile
+	return
+}
+
+func (bot *Bot) getBeatmapsetInfo(event Event) (beatmapSet Beatmapset, err error) {
+	beatmapSetId, err := strconv.Atoi(strings.TrimPrefix(event.Beatmapset.URL, "/s/"))
+	if err != nil {
+		return
+	}
+
+	log.Println("beatmap set id", beatmapSetId)
+	beatmapSet, err = bot.api.GetBeatmapSet(beatmapSetId)
+	if err != nil {
+		return
+	}
+
+	return
 }
 
 func (bot *Bot) newMessageHandler(s *discordgo.Session, m *discordgo.MessageCreate) (err error) {

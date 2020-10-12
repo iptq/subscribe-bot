@@ -12,6 +12,7 @@ type Config struct {
 	BotToken     string `toml:"bot_token"`
 	ClientId     int    `toml:"client_id"`
 	ClientSecret string `toml:"client_secret"`
+	Repos        string `toml:"repos"`
 }
 
 func ReadConfig(path string) (config Config, err error) {

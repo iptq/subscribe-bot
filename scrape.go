@@ -23,9 +23,7 @@ func RunScraper(bot *Bot, db *Db, api *Osuapi, requests chan int) {
 		}
 
 		db.IterTrackingChannels(userId, func(channelId string) error {
-			for _, beatmap := range newMaps {
-				bot.ChannelMessageSend(channelId, fmt.Sprintf("new beatmap event [%s](%s)", beatmap.Title, beatmap.URL))
-			}
+			bot.NotifyNewEvent(channelId, newMaps)
 			return nil
 		})
 
@@ -37,10 +35,10 @@ func RunScraper(bot *Bot, db *Db, api *Osuapi, requests chan int) {
 	}
 }
 
-func getNewMaps(db *Db, api *Osuapi, userId int) (newMaps []Beatmapset, err error) {
+func getNewMaps(db *Db, api *Osuapi, userId int) (newMaps []Event, err error) {
 	// see if there's a last event
 	hasLastEvent, lastEventId := db.MapperLastEvent(userId)
-	newMaps = make([]Beatmapset, 0)
+	newMaps = make([]Event, 0)
 	var (
 		events            []Event
 		newLatestEvent    = 0
@@ -75,7 +73,7 @@ func getNewMaps(db *Db, api *Osuapi, userId int) (newMaps []Beatmapset, err erro
 				if event.Type == "beatmapsetUpload" ||
 					event.Type == "beatmapsetRevive" ||
 					event.Type == "beatmapsetUpdate" {
-					newMaps = append(newMaps, event.Beatmapset)
+					newMaps = append(newMaps, event)
 				}
 			}
 
@@ -97,10 +95,13 @@ func getNewMaps(db *Db, api *Osuapi, userId int) (newMaps []Beatmapset, err erro
 			if event.Type == "beatmapsetUpload" ||
 				event.Type == "beatmapsetRevive" ||
 				event.Type == "beatmapsetUpdate" {
-				newMaps = append(newMaps, event.Beatmapset)
+				newMaps = append(newMaps, event)
 			}
 		}
 	}
+
+	// TODO: debug
+	// updateLatestEvent = false
 
 	if updateLatestEvent {
 		err = db.UpdateMapperLatestEvent(userId, newLatestEvent)

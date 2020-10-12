@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -64,7 +66,7 @@ func (api *Osuapi) Token() (token string, err error) {
 	return
 }
 
-func (api *Osuapi) Request(action string, url string, result interface{}) (err error) {
+func (api *Osuapi) Request0(action string, url string) (resp *http.Response, err error) {
 	err = api.lock.Acquire(context.TODO(), 1)
 	if err != nil {
 		return
@@ -82,10 +84,36 @@ func (api *Osuapi) Request(action string, url string, result interface{}) (err e
 		return
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err = http.DefaultClient.Do(req)
 	if err != nil {
 		return
 	}
+
+	if resp.StatusCode != 200 {
+		var respBody []byte
+		respBody, err = ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return
+		}
+
+		err = fmt.Errorf("not 200: %s", string(respBody))
+		return
+	}
+
+	// release the lock after 1 minute
+	go func() {
+		time.Sleep(time.Minute)
+		api.lock.Release(1)
+	}()
+	return
+}
+
+func (api *Osuapi) Request(action string, url string, result interface{}) (err error) {
+	resp, err := api.Request0(action, url)
+	if err != nil {
+		return
+	}
+
 	data, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return
@@ -96,11 +124,48 @@ func (api *Osuapi) Request(action string, url string, result interface{}) (err e
 		return
 	}
 
-	// release the lock after 1 minute
-	go func() {
-		time.Sleep(time.Minute)
-		api.lock.Release(1)
-	}()
+	return
+}
+
+func (api *Osuapi) GetBeatmapSet(beatmapSetId int) (beatmapSet Beatmapset, err error) {
+	url := fmt.Sprintf("/beatmapsets/%d", beatmapSetId)
+	err = api.Request("GET", url, &beatmapSet)
+	if err != nil {
+		return
+	}
+
+	return
+}
+
+func (api *Osuapi) BeatmapsetDownload(beatmapSetId int) (path string, err error) {
+	url := fmt.Sprintf("/beatmapsets/%d/download", beatmapSetId)
+	resp, err := api.Request0("GET", url)
+	if err != nil {
+		return
+	}
+
+	file, err := ioutil.TempFile(os.TempDir(), "beatmapsetDownload")
+	if err != nil {
+		return
+	}
+
+	_, err = io.Copy(file, resp.Body)
+	if err != nil {
+		return
+	}
+	file.Close()
+
+	path = file.Name()
+	return
+}
+
+func (api *Osuapi) GetUser(userId int) (user User, err error) {
+	url := fmt.Sprintf("/users/%d", userId)
+	err = api.Request("GET", url, &user)
+	if err != nil {
+		return
+	}
+
 	return
 }
 
