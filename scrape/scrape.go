@@ -50,7 +50,7 @@ func RunScraper(config *config.Config, bot *discord.Bot, db *db.Db, api *osuapi.
 					break
 				}
 
-				mapperId := beatmapSet.UserId
+				mapperId := beatmapSet.UserID
 				if _, ok := trackedMappers[mapperId]; ok {
 					if _, ok2 := allNewMaps[mapperId]; !ok2 {
 						allNewMaps[mapperId] = make([]osuapi.Beatmapset, 0)

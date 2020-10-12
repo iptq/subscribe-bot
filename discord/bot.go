@@ -100,7 +100,7 @@ func (bot *Bot) NotifyNewBeatmap(channels []string, newMaps []osuapi.Beatmapset)
 
 		// try to open a repo for this beatmap
 		var repo *git.Repository
-		repoDir := path.Join(bot.config.Repos, strconv.Itoa(beatmapSet.ID))
+		repoDir := path.Join(bot.config.Repos, strconv.Itoa(beatmapSet.UserID), strconv.Itoa(beatmapSet.ID))
 		if _, err := os.Stat(repoDir); os.IsNotExist(err) {
 			os.MkdirAll(repoDir, 0777)
 		}
@@ -181,11 +181,11 @@ func (bot *Bot) NotifyNewBeatmap(channels []string, newMaps []osuapi.Beatmapset)
 			Title:     fmt.Sprintf("Update: %s - %s", beatmapSet.Artist, beatmapSet.Title),
 			Timestamp: eventTime.Format(time.RFC3339),
 			Author: &discordgo.MessageEmbedAuthor{
-				URL:  "https://osu.ppy.sh/u/" + strconv.Itoa(beatmapSet.UserId),
+				URL:  "https://osu.ppy.sh/u/" + strconv.Itoa(beatmapSet.UserID),
 				Name: beatmapSet.Creator,
 				IconURL: fmt.Sprintf(
 					"https://a.ppy.sh/%d?%d.png",
-					beatmapSet.UserId,
+					beatmapSet.UserID,
 					time.Now().Unix(),
 				),
 			},

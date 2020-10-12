@@ -14,7 +14,7 @@ type Beatmapset struct {
 	Title         string `json:"title"`
 	TitleUnicode  string `json:"title_unicode"`
 	Creator       string `json:"creator"`
-	UserId        int    `json:"user_id"`
+	UserID        int    `json:"user_id"`
 
 	Covers      BeatmapCovers `json:"covers"`
 	Beatmaps    []Beatmap     `json:"beatmaps,omitempty"`
