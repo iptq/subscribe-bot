@@ -199,7 +199,7 @@ func (bot *Bot) NotifyNewEvent(channels []string, newMaps []Event) (err error) {
 				IconURL: fmt.Sprintf(
 					"https://a.ppy.sh/%d?%d.png",
 					beatmapSet.UserId,
-					time.Now().Unix,
+					time.Now().Unix(),
 				),
 			}
 			embed.Thumbnail = &discordgo.MessageEmbedThumbnail{

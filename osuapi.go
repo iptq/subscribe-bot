@@ -48,7 +48,11 @@ func (api *Osuapi) Token() (token string, err error) {
 		api.clientSecret,
 	)
 
-	resp, err := http.Post("https://osu.ppy.sh/oauth/token", "application/x-www-form-urlencoded", strings.NewReader(data))
+	resp, err := http.Post(
+		"https://osu.ppy.sh/oauth/token",
+		"application/x-www-form-urlencoded",
+		strings.NewReader(data),
+	)
 	if err != nil {
 		return
 	}
