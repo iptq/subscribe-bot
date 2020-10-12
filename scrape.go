@@ -14,7 +14,7 @@ var (
 func RunScraper(bot *Bot, db *Db, api *Osuapi, requests chan int) {
 	lastUpdateTime := time.Now()
 	go func() {
-		for range ticker.C {
+		for ; true; <-ticker.C {
 			// build a list of currently tracked mappers
 			trackedMappers := make(map[int]int)
 			db.IterTrackedMappers(func(userId int) error {
@@ -30,8 +30,8 @@ func RunScraper(bot *Bot, db *Db, api *Osuapi, requests chan int) {
 
 			allNewMaps := make(map[int][]Beatmapset, 0)
 			var newLastUpdateTime = time.Unix(0, 0)
-			for _, beatmap := range pendingSets.Beatmapsets {
-				updatedTime, err := time.Parse(time.RFC3339, beatmap.LastUpdated)
+			for _, beatmapSet := range pendingSets.Beatmapsets {
+				updatedTime, err := time.Parse(time.RFC3339, beatmapSet.LastUpdated)
 				if err != nil {
 					log.Println("error parsing last updated time", updatedTime)
 				}
@@ -45,33 +45,33 @@ func RunScraper(bot *Bot, db *Db, api *Osuapi, requests chan int) {
 					break
 				}
 
-				if mapperId, ok := trackedMappers[beatmap.UserId]; ok {
+				mapperId := beatmapSet.UserId
+				if _, ok := trackedMappers[mapperId]; ok {
 					if _, ok2 := allNewMaps[mapperId]; !ok2 {
 						allNewMaps[mapperId] = make([]Beatmapset, 0)
 					}
 
-					allNewMaps[mapperId] = append(allNewMaps[mapperId], beatmap)
+					allNewMaps[mapperId] = append(allNewMaps[mapperId], beatmapSet)
 				}
 			}
 
 			if len(allNewMaps) > 0 {
-				log.Println("all new maps", allNewMaps)
 				for mapperId, newMaps := range allNewMaps {
 					channels := make([]string, 0)
 					db.IterTrackingChannels(mapperId, func(channelId string) error {
 						channels = append(channels, channelId)
 						return nil
 					})
-					log.Println(newMaps)
 
 					err := bot.NotifyNewBeatmap(channels, newMaps)
 					if err != nil {
-						log.Println("error notifying new maps", err)
+						log.Println("error notifying new maps:", err)
 					}
 				}
 			}
 
 			lastUpdateTime = newLastUpdateTime
+			fmt.Print("\a")
 			log.Println("last updated time", lastUpdateTime)
 		}
 	}()

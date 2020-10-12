@@ -75,16 +75,14 @@ func (bot *Bot) errWrap(fn interface{}) interface{} {
 }
 
 func (bot *Bot) NotifyNewBeatmap(channels []string, newMaps []Beatmapset) (err error) {
-	for i, beatmapSet := range newMaps {
+	for _, beatmapSet := range newMaps {
 		var eventTime time.Time
 		eventTime, err = time.Parse(time.RFC3339, beatmapSet.LastUpdated)
 		if err != nil {
 			return
 		}
-		log.Println(i, "event time", eventTime)
 
 		var (
-			beatmapSet           Beatmapset
 			gotDownloadedBeatmap = false
 			downloadedBeatmap    BeatmapsetDownloaded
 			// status               git.Status
@@ -130,10 +128,6 @@ func (bot *Bot) NotifyNewBeatmap(channels []string, newMaps []Beatmapset) (err e
 		if err != nil {
 			return
 		}
-		// status, err = worktree.Status()
-		// if err != nil {
-		// 	return
-		// }
 		files, err = ioutil.ReadDir(repoDir)
 		if err != nil {
 			return
@@ -155,31 +149,34 @@ func (bot *Bot) NotifyNewBeatmap(channels []string, newMaps []Beatmapset) (err e
 			},
 		)
 		if err != nil {
+			err = fmt.Errorf("couldn't create commit for %s: %w", beatmapSet.ID, err)
 			return
 		}
 
 		commit, err = repo.CommitObject(hash)
 		if err != nil {
+			err = fmt.Errorf("couldn't find commit with hash %s: %w", hash, err)
 			return
 		}
 		parent, err = commit.Parent(0)
-		if err == object.ErrParentNotFound {
-
+		if errors.Is(err, object.ErrParentNotFound) {
+			err = nil
 		} else if err != nil {
+			err = fmt.Errorf("couldn't retrieve commit parent: %w", err)
 			return
 		} else {
 			patch, err = commit.Patch(parent)
 			if err != nil {
+				err = fmt.Errorf("couldn't retrieve patch: %w", err)
 				return
 			}
 			foundPatch = true
 		}
 
-		log.Println("BEATMAP SET", beatmapSet)
 		embed := &discordgo.MessageEmbed{
 			URL:       fmt.Sprintf("https://osu.ppy.sh/s/%d", beatmapSet.ID),
 			Title:     fmt.Sprintf("Update: %s - %s", beatmapSet.Artist, beatmapSet.Title),
-			Timestamp: eventTime.String(),
+			Timestamp: eventTime.Format(time.RFC3339),
 			Author: &discordgo.MessageEmbedAuthor{
 				URL:  "https://osu.ppy.sh/u/" + strconv.Itoa(beatmapSet.UserId),
 				Name: beatmapSet.Creator,
@@ -197,12 +194,22 @@ func (bot *Bot) NotifyNewBeatmap(channels []string, newMaps []Beatmapset) (err e
 		if gotDownloadedBeatmap {
 			log.Println(downloadedBeatmap)
 			if foundPatch {
-				embed.Description = patch.Stats().String()
+				embed.Description = fmt.Sprintf(
+					"Latest revision: %s\n%s",
+					hash,
+					patch.Stats().String(),
+				)
+			} else {
+				embed.Description = "Newly tracked map; diff information will be reported upon next update!"
 			}
 		}
 
 		for _, channelId := range channels {
-			bot.ChannelMessageSendEmbed(channelId, embed)
+			_, err = bot.ChannelMessageSendEmbed(channelId, embed)
+			if err != nil {
+				err = fmt.Errorf("failed to send to %s: %w", channelId, err)
+				return
+			}
 		}
 	}
 
