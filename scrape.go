@@ -28,10 +28,10 @@ func RunScraper(bot *Bot, db *Db, api *Osuapi, requests chan int) {
 		})
 
 		// wait a minute and put them back into the queue
-		go func() {
+		go func(id int) {
 			time.Sleep(refreshInterval)
-			requests <- userId
-		}()
+			requests <- id
+		}(userId)
 	}
 }
 
