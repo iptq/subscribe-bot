@@ -39,7 +39,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	go scrape.RunScraper(bot, db, api)
+	go scrape.RunScraper(&config, bot, db, api)
 	go web.RunWeb(&config)
 
 	signal_chan := make(chan os.Signal, 1)
