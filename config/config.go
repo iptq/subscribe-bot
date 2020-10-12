@@ -9,14 +9,18 @@ import (
 )
 
 type Config struct {
-	Debug        bool   `toml:"debug"`
+	Debug        bool   `toml:"debug,omitempty"`
 	BotToken     string `toml:"bot_token"`
-	ClientId     int    `toml:"client_id"`
-	ClientSecret string `toml:"client_secret"`
 	Repos        string `toml:"repos"`
 	DatabasePath string `toml:"db_path"`
 
-	Web WebConfig `toml:"web"`
+	Oauth OauthConfig `toml:"oauth"`
+	Web   WebConfig   `toml:"web"`
+}
+
+type OauthConfig struct {
+	ClientId     int    `toml:"client_id"`
+	ClientSecret string `toml:"client_secret"`
 }
 
 type WebConfig struct {

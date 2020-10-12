@@ -21,12 +21,11 @@ import (
 const BASE_URL = "https://osu.ppy.sh/api/v2"
 
 type Osuapi struct {
-	httpClient   *http.Client
-	lock         *semaphore.Weighted
-	token        string
-	expires      time.Time
-	clientId     int
-	clientSecret string
+	httpClient *http.Client
+	lock       *semaphore.Weighted
+	token      string
+	expires    time.Time
+	config     *config.Config
 }
 
 func New(config *config.Config) *Osuapi {
@@ -36,7 +35,7 @@ func New(config *config.Config) *Osuapi {
 
 	// want to cap at around 1000 requests a minute, OSU cap is 1200
 	lock := semaphore.NewWeighted(1000)
-	return &Osuapi{client, lock, "", time.Now(), config.ClientId, config.ClientSecret}
+	return &Osuapi{client, lock, "", time.Now(), config}
 }
 
 func (api *Osuapi) Token() (token string, err error) {
@@ -47,8 +46,8 @@ func (api *Osuapi) Token() (token string, err error) {
 
 	data := fmt.Sprintf(
 		"client_id=%d&client_secret=%s&grant_type=client_credentials&scope=public",
-		api.clientId,
-		api.clientSecret,
+		api.config.Oauth.ClientId,
+		api.config.Oauth.ClientSecret,
 	)
 
 	resp, err := http.Post(

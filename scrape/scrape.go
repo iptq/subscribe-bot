@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"subscribe-bot/config"
 	"subscribe-bot/db"
 	"subscribe-bot/discord"
 	"subscribe-bot/osuapi"
@@ -15,7 +16,7 @@ var (
 	Ticker          = time.NewTicker(refreshInterval)
 )
 
-func RunScraper(bot *discord.Bot, db *db.Db, api *osuapi.Osuapi) {
+func RunScraper(config *config.Config, bot *discord.Bot, db *db.Db, api *osuapi.Osuapi) {
 	lastUpdateTime := time.Now()
 	go func() {
 		for ; true; <-Ticker.C {
@@ -75,7 +76,11 @@ func RunScraper(bot *discord.Bot, db *db.Db, api *osuapi.Osuapi) {
 			}
 
 			lastUpdateTime = newLastUpdateTime
-			fmt.Print("\a")
+			// this rings the terminal bell when it's updated so i don't have to stare
+			// at a blank screen for 30 seconds waiting for the feed to update
+			if config.Debug {
+				fmt.Print("\a")
+			}
 			log.Println("last updated time", lastUpdateTime)
 		}
 	}()
