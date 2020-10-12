@@ -132,6 +132,22 @@ func (api *Osuapi) Request(action string, url string, result interface{}) (err e
 	return
 }
 
+func (api *Osuapi) DownloadSingleBeatmap(beatmapId int, path string) (err error) {
+	url := fmt.Sprintf("https://osu.ppy.sh/osu/%d", beatmapId)
+	resp, err := api.httpClient.Get(url)
+
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		return
+	}
+
+	_, err = io.Copy(file, resp.Body)
+	if err != nil {
+		return
+	}
+	return
+}
+
 func (api *Osuapi) GetBeatmapSet(beatmapSetId int) (beatmapSet Beatmapset, err error) {
 	url := fmt.Sprintf("/beatmapsets/%d", beatmapSetId)
 	err = api.Request("GET", url, &beatmapSet)

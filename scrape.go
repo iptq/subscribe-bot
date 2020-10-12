@@ -20,11 +20,20 @@ func RunScraper(bot *Bot, db *Db, api *Osuapi, requests chan int) {
 		if err != nil {
 			log.Println("err getting new maps:", err)
 		}
+		log.Println("new maps for", userId, newMaps)
 
-		db.IterTrackingChannels(userId, func(channelId string) error {
-			bot.NotifyNewEvent(channelId, newMaps)
-			return nil
-		})
+		if len(newMaps) > 0 {
+			channels := make([]string, 0)
+			db.IterTrackingChannels(userId, func(channelId string) error {
+				channels = append(channels, channelId)
+				return nil
+			})
+
+			err := bot.NotifyNewEvent(channels, newMaps)
+			if err != nil {
+				log.Println("error notifying new maps", err)
+			}
+		}
 
 		// wait a minute and put them back into the queue
 		go func(id int) {

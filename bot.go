@@ -3,7 +3,10 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"os"
+	"path"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -11,6 +14,9 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
 )
 
 type Bot struct {
@@ -19,10 +25,11 @@ type Bot struct {
 	db        *Db
 	api       *Osuapi
 	requests  chan int
+	config    *Config
 }
 
-func NewBot(token string, db *Db, requests chan int) (bot *Bot, err error) {
-	s, err := discordgo.New("Bot " + token)
+func NewBot(config *Config, db *Db, requests chan int) (bot *Bot, err error) {
+	s, err := discordgo.New("Bot " + config.BotToken)
 	if err != nil {
 		return
 	}
@@ -38,7 +45,7 @@ func NewBot(token string, db *Db, requests chan int) (bot *Bot, err error) {
 		return
 	}
 
-	bot = &Bot{s, re, db, db.api, requests}
+	bot = &Bot{s, re, db, db.api, requests, config}
 	s.AddHandler(bot.errWrap(bot.newMessageHandler))
 	return
 }
@@ -67,25 +74,108 @@ func (bot *Bot) errWrap(fn interface{}) interface{} {
 	return newFunc.Interface()
 }
 
-func (bot *Bot) NotifyNewEvent(channelId string, newMaps []Event) (err error) {
-	for _, event := range newMaps {
+func (bot *Bot) NotifyNewEvent(channels []string, newMaps []Event) (err error) {
+	for i, event := range newMaps {
+		var eventTime time.Time
+		eventTime, err = time.Parse(time.RFC3339, event.CreatedAt)
+		if err != nil {
+			return
+		}
+		log.Println(i, "event time", eventTime)
+
 		var (
 			gotBeatmapInfo       = false
 			beatmapSet           Beatmapset
 			gotDownloadedBeatmap = false
 			downloadedBeatmap    BeatmapsetDownloaded
+			// status               git.Status
+
+			commit *object.Commit
+			parent *object.Commit
+			patch  *object.Patch
+			// commitFiles *object.FileIter
 		)
 		beatmapSet, err = bot.getBeatmapsetInfo(event)
 		if err != nil {
 			log.Println("failed to retrieve beatmap info:", err)
 		} else {
 			gotBeatmapInfo = true
-			downloadedBeatmap, err = bot.downloadBeatmap(&beatmapSet)
+
+			// try to open a repo for this beatmap
+			var repo *git.Repository
+			repoDir := path.Join(bot.config.Repos, strconv.Itoa(beatmapSet.ID))
+			if _, err := os.Stat(repoDir); os.IsNotExist(err) {
+				os.MkdirAll(repoDir, 0777)
+			}
+			repo, err = git.PlainOpen(repoDir)
+			if err == git.ErrRepositoryNotExists {
+				// create a new repo
+				repo, err = git.PlainInit(repoDir, false)
+			}
+			if err != nil {
+				return
+			}
+
+			// download latest updates to the map
+			err = bot.downloadBeatmapTo(&beatmapSet, repo, repoDir)
 			if err != nil {
 				log.Println("failed to download beatmap:", err)
 			} else {
 				gotDownloadedBeatmap = true
 			}
+
+			// create a commit
+			var (
+				worktree *git.Worktree
+				files    []os.FileInfo
+				hash     plumbing.Hash
+			)
+			worktree, err = repo.Worktree()
+			if err != nil {
+				return
+			}
+			// status, err = worktree.Status()
+			// if err != nil {
+			// 	return
+			// }
+			files, err = ioutil.ReadDir(repoDir)
+			if err != nil {
+				return
+			}
+			for _, f := range files {
+				if f.Name() == ".git" {
+					continue
+				}
+				worktree.Add(f.Name())
+			}
+			hash, err = worktree.Commit(
+				fmt.Sprintf("evtID: %d", event.ID),
+				&git.CommitOptions{
+					Author: &object.Signature{
+						Name:  beatmapSet.Creator,
+						Email: "nobody@localhost",
+						When:  eventTime,
+					},
+				},
+			)
+			if err != nil {
+				return
+			}
+
+			commit, err = repo.CommitObject(hash)
+			if err != nil {
+				return
+			}
+			parent, err = commit.Parent(0)
+			if err != nil {
+				return
+			}
+			patch, err = commit.Patch(parent)
+			if err != nil {
+				return
+			}
+
+			// report diffs
 		}
 
 		log.Println("BEATMAP SET", beatmapSet)
@@ -113,9 +203,12 @@ func (bot *Bot) NotifyNewEvent(channelId string, newMaps []Event) (err error) {
 
 			if gotDownloadedBeatmap {
 				log.Println(downloadedBeatmap)
+				embed.Description = patch.String()
 			}
 		}
-		bot.ChannelMessageSendEmbed(channelId, embed)
+		for _, channelId := range channels {
+			bot.ChannelMessageSendEmbed(channelId, embed)
+		}
 	}
 
 	return
@@ -125,13 +218,27 @@ type BeatmapsetDownloaded struct {
 	Path string
 }
 
-func (bot *Bot) downloadBeatmap(beatmapSet *Beatmapset) (downloadedBeatmap BeatmapsetDownloaded, err error) {
-	beatmapFile, err := bot.api.BeatmapsetDownload(beatmapSet.ID)
+func (bot *Bot) downloadBeatmapTo(beatmapSet *Beatmapset, repo *git.Repository, repoDir string) (err error) {
+	// clear all OSU files
+	files, err := ioutil.ReadDir(repoDir)
 	if err != nil {
 		return
 	}
+	for _, f := range files {
+		if !strings.HasSuffix(f.Name(), ".osu") {
+			continue
+		}
+		os.Remove(f.Name())
+	}
 
-	downloadedBeatmap.Path = beatmapFile
+	for _, beatmap := range beatmapSet.Beatmaps {
+		path := path.Join(repoDir, fmt.Sprintf("%d.osu", beatmap.ID))
+
+		err = bot.api.DownloadSingleBeatmap(beatmap.ID, path)
+		if err != nil {
+			return
+		}
+	}
 	return
 }
 

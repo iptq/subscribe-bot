@@ -25,7 +25,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	bot, err := NewBot(config.BotToken, db, requests)
+	bot, err := NewBot(&config, db, requests)
 	if err != nil {
 		log.Fatal(err)
 	}
