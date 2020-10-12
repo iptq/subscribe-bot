@@ -1,13 +1,13 @@
 package main
 
 type User struct {
-	Id          int    `json:"id"`
+	ID          int    `json:"id"`
 	Username    string `json:"username"`
 	CountryCode string `json:"country_code"`
 }
 
 type Beatmapset struct {
-	Id int `json:"id"`
+	ID int `json:"id"`
 
 	Artist        string `json:"artist"`
 	ArtistUnicode string `json:"artist_unicode"`
@@ -21,7 +21,7 @@ type Beatmapset struct {
 }
 
 type Beatmap struct {
-	Id               int     `json:"id"`
+	ID               int     `json:"id"`
 	DifficultyRating float64 `json:"difficulty_rating"`
 	DifficultyName   string  `json:"version"`
 }

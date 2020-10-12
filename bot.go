@@ -126,7 +126,7 @@ type BeatmapsetDownloaded struct {
 }
 
 func (bot *Bot) downloadBeatmap(beatmapSet *Beatmapset) (downloadedBeatmap BeatmapsetDownloaded, err error) {
-	beatmapFile, err := bot.api.BeatmapsetDownload(beatmapSet.Id)
+	beatmapFile, err := bot.api.BeatmapsetDownload(beatmapSet.ID)
 	if err != nil {
 		return
 	}
@@ -180,7 +180,7 @@ func (bot *Bot) newMessageHandler(s *discordgo.Session, m *discordgo.MessageCrea
 		if err != nil {
 			return
 		}
-		mapperId := mapper.Id
+		mapperId := mapper.ID
 
 		err = bot.db.ChannelTrackMapper(m.ChannelID, mapperId, 3)
 		if err != nil {
@@ -192,7 +192,6 @@ func (bot *Bot) newMessageHandler(s *discordgo.Session, m *discordgo.MessageCrea
 			bot.requests <- mapperId
 		}()
 
-		bot.MessageReactionAdd(m.ChannelID, m.ID, "\xf0\x9f\x91\x8d")
 		bot.ChannelMessageSend(m.ChannelID, fmt.Sprintf("subscribed to %+v", mapper))
 	}
 
