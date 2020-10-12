@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -28,7 +29,7 @@ type Osuapi struct {
 
 func NewOsuapi(config *Config) *Osuapi {
 	client := &http.Client{
-		Timeout: 10 * time.Second,
+		Timeout: 9 * time.Second,
 	}
 
 	// want to cap at around 1000 requests a minute, OSU cap is 1200
@@ -202,6 +203,19 @@ func (api *Osuapi) GetUserEvents(userId int, limit int, offset int) (events []Ev
 		offset,
 	)
 	err = api.Request("GET", url, &events)
+	if err != nil {
+		return
+	}
+
+	return
+}
+
+func (api *Osuapi) SearchBeatmaps(rankStatus string) (beatmapSearch BeatmapSearch, err error) {
+	values := url.Values{}
+	values.Set("s", rankStatus)
+	query := values.Encode()
+	url := "/beatmapsets/search?" + query
+	err = api.Request("GET", url, &beatmapSearch)
 	if err != nil {
 		return
 	}

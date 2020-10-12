@@ -7,40 +7,74 @@ import (
 )
 
 var (
-	refreshInterval = 60 * time.Second
+	refreshInterval = 30 * time.Second
+	ticker          = time.NewTicker(refreshInterval)
 )
 
 func RunScraper(bot *Bot, db *Db, api *Osuapi, requests chan int) {
-	// start timers
-	go startTimers(db, requests)
-
-	for userId := range requests {
-		log.Println("scraping user", userId)
-		newMaps, err := getNewMaps(db, api, userId)
-		if err != nil {
-			log.Println("err getting new maps:", err)
-		}
-		log.Println("new maps for", userId, newMaps)
-
-		if len(newMaps) > 0 {
-			channels := make([]string, 0)
-			db.IterTrackingChannels(userId, func(channelId string) error {
-				channels = append(channels, channelId)
+	lastUpdateTime := time.Now()
+	go func() {
+		for range ticker.C {
+			// build a list of currently tracked mappers
+			trackedMappers := make(map[int]int)
+			db.IterTrackedMappers(func(userId int) error {
+				trackedMappers[userId] = 1
 				return nil
 			})
 
-			err := bot.NotifyNewEvent(channels, newMaps)
+			// TODO: is this sorted for sure??
+			pendingSets, err := bot.api.SearchBeatmaps("pending")
 			if err != nil {
-				log.Println("error notifying new maps", err)
+				log.Println("error fetching pending sets", err)
 			}
-		}
 
-		// wait a minute and put them back into the queue
-		go func(id int) {
-			time.Sleep(refreshInterval)
-			requests <- id
-		}(userId)
-	}
+			allNewMaps := make(map[int][]Beatmapset, 0)
+			var newLastUpdateTime = time.Unix(0, 0)
+			for _, beatmap := range pendingSets.Beatmapsets {
+				updatedTime, err := time.Parse(time.RFC3339, beatmap.LastUpdated)
+				if err != nil {
+					log.Println("error parsing last updated time", updatedTime)
+				}
+
+				if updatedTime.After(newLastUpdateTime) {
+					// update lastUpdateTime to latest updated map
+					newLastUpdateTime = updatedTime
+				}
+
+				if !updatedTime.After(lastUpdateTime) {
+					break
+				}
+
+				if mapperId, ok := trackedMappers[beatmap.UserId]; ok {
+					if _, ok2 := allNewMaps[mapperId]; !ok2 {
+						allNewMaps[mapperId] = make([]Beatmapset, 0)
+					}
+
+					allNewMaps[mapperId] = append(allNewMaps[mapperId], beatmap)
+				}
+			}
+
+			if len(allNewMaps) > 0 {
+				log.Println("all new maps", allNewMaps)
+				for mapperId, newMaps := range allNewMaps {
+					channels := make([]string, 0)
+					db.IterTrackingChannels(mapperId, func(channelId string) error {
+						channels = append(channels, channelId)
+						return nil
+					})
+					log.Println(newMaps)
+
+					err := bot.NotifyNewBeatmap(channels, newMaps)
+					if err != nil {
+						log.Println("error notifying new maps", err)
+					}
+				}
+			}
+
+			lastUpdateTime = newLastUpdateTime
+			log.Println("last updated time", lastUpdateTime)
+		}
+	}()
 }
 
 func getNewMaps(db *Db, api *Osuapi, userId int) (newMaps []Event, err error) {

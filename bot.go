@@ -74,17 +74,16 @@ func (bot *Bot) errWrap(fn interface{}) interface{} {
 	return newFunc.Interface()
 }
 
-func (bot *Bot) NotifyNewEvent(channels []string, newMaps []Event) (err error) {
-	for i, event := range newMaps {
+func (bot *Bot) NotifyNewBeatmap(channels []string, newMaps []Beatmapset) (err error) {
+	for i, beatmapSet := range newMaps {
 		var eventTime time.Time
-		eventTime, err = time.Parse(time.RFC3339, event.CreatedAt)
+		eventTime, err = time.Parse(time.RFC3339, beatmapSet.LastUpdated)
 		if err != nil {
 			return
 		}
 		log.Println(i, "event time", eventTime)
 
 		var (
-			gotBeatmapInfo       = false
 			beatmapSet           Beatmapset
 			gotDownloadedBeatmap = false
 			downloadedBeatmap    BeatmapsetDownloaded
@@ -96,104 +95,92 @@ func (bot *Bot) NotifyNewEvent(channels []string, newMaps []Event) (err error) {
 			foundPatch = false
 			// commitFiles *object.FileIter
 		)
-		beatmapSet, err = bot.getBeatmapsetInfo(event)
+		// beatmapSet, err = bot.getBeatmapsetInfo(beatmap)
+
+		// try to open a repo for this beatmap
+		var repo *git.Repository
+		repoDir := path.Join(bot.config.Repos, strconv.Itoa(beatmapSet.ID))
+		if _, err := os.Stat(repoDir); os.IsNotExist(err) {
+			os.MkdirAll(repoDir, 0777)
+		}
+		repo, err = git.PlainOpen(repoDir)
+		if err == git.ErrRepositoryNotExists {
+			// create a new repo
+			repo, err = git.PlainInit(repoDir, false)
+		}
 		if err != nil {
-			log.Println("failed to retrieve beatmap info:", err)
+			return
+		}
+
+		// download latest updates to the map
+		err = bot.downloadBeatmapTo(&beatmapSet, repo, repoDir)
+		if err != nil {
+			log.Println("failed to download beatmap:", err)
 		} else {
-			gotBeatmapInfo = true
+			gotDownloadedBeatmap = true
+		}
 
-			// try to open a repo for this beatmap
-			var repo *git.Repository
-			repoDir := path.Join(bot.config.Repos, strconv.Itoa(beatmapSet.ID))
-			if _, err := os.Stat(repoDir); os.IsNotExist(err) {
-				os.MkdirAll(repoDir, 0777)
+		// create a commit
+		var (
+			worktree *git.Worktree
+			files    []os.FileInfo
+			hash     plumbing.Hash
+		)
+		worktree, err = repo.Worktree()
+		if err != nil {
+			return
+		}
+		// status, err = worktree.Status()
+		// if err != nil {
+		// 	return
+		// }
+		files, err = ioutil.ReadDir(repoDir)
+		if err != nil {
+			return
+		}
+		for _, f := range files {
+			if f.Name() == ".git" {
+				continue
 			}
-			repo, err = git.PlainOpen(repoDir)
-			if err == git.ErrRepositoryNotExists {
-				// create a new repo
-				repo, err = git.PlainInit(repoDir, false)
-			}
-			if err != nil {
-				return
-			}
-
-			// download latest updates to the map
-			err = bot.downloadBeatmapTo(&beatmapSet, repo, repoDir)
-			if err != nil {
-				log.Println("failed to download beatmap:", err)
-			} else {
-				gotDownloadedBeatmap = true
-			}
-
-			// create a commit
-			var (
-				worktree *git.Worktree
-				files    []os.FileInfo
-				hash     plumbing.Hash
-			)
-			worktree, err = repo.Worktree()
-			if err != nil {
-				return
-			}
-			// status, err = worktree.Status()
-			// if err != nil {
-			// 	return
-			// }
-			files, err = ioutil.ReadDir(repoDir)
-			if err != nil {
-				return
-			}
-			for _, f := range files {
-				if f.Name() == ".git" {
-					continue
-				}
-				worktree.Add(f.Name())
-			}
-			hash, err = worktree.Commit(
-				fmt.Sprintf("evtID: %d", event.ID),
-				&git.CommitOptions{
-					Author: &object.Signature{
-						Name:  beatmapSet.Creator,
-						Email: "nobody@localhost",
-						When:  eventTime,
-					},
+			worktree.Add(f.Name())
+		}
+		hash, err = worktree.Commit(
+			fmt.Sprintf("update: %d", beatmapSet.ID),
+			&git.CommitOptions{
+				Author: &object.Signature{
+					Name:  beatmapSet.Creator,
+					Email: "nobody@localhost",
+					When:  eventTime,
 				},
-			)
+			},
+		)
+		if err != nil {
+			return
+		}
+
+		commit, err = repo.CommitObject(hash)
+		if err != nil {
+			return
+		}
+		parent, err = commit.Parent(0)
+		if err == object.ErrParentNotFound {
+
+		} else if err != nil {
+			return
+		} else {
+			patch, err = commit.Patch(parent)
 			if err != nil {
 				return
 			}
-
-			commit, err = repo.CommitObject(hash)
-			if err != nil {
-				return
-			}
-			parent, err = commit.Parent(0)
-			if err == object.ErrParentNotFound {
-
-			} else if err != nil {
-				return
-			} else {
-				patch, err = commit.Patch(parent)
-				if err != nil {
-					return
-				}
-				foundPatch = true
-			}
-
-			// report diffs
+			foundPatch = true
 		}
 
 		log.Println("BEATMAP SET", beatmapSet)
 		embed := &discordgo.MessageEmbed{
-			URL:       "https://osu.ppy.sh" + event.Beatmapset.URL,
-			Title:     event.Type + ": " + event.Beatmapset.Title,
-			Timestamp: event.CreatedAt,
-			Footer: &discordgo.MessageEmbedFooter{
-				Text: fmt.Sprintf("Event ID: %d", event.ID),
-			},
-		}
-		if gotBeatmapInfo {
-			embed.Author = &discordgo.MessageEmbedAuthor{
+			URL:       fmt.Sprintf("https://osu.ppy.sh/s/%d", beatmapSet.ID),
+			Title:     fmt.Sprintf("Update: %s - %s", beatmapSet.Artist, beatmapSet.Title),
+			Timestamp: eventTime.String(),
+			Author: &discordgo.MessageEmbedAuthor{
 				URL:  "https://osu.ppy.sh/u/" + strconv.Itoa(beatmapSet.UserId),
 				Name: beatmapSet.Creator,
 				IconURL: fmt.Sprintf(
@@ -201,18 +188,19 @@ func (bot *Bot) NotifyNewEvent(channels []string, newMaps []Event) (err error) {
 					beatmapSet.UserId,
 					time.Now().Unix(),
 				),
-			}
-			embed.Thumbnail = &discordgo.MessageEmbedThumbnail{
+			},
+			Thumbnail: &discordgo.MessageEmbedThumbnail{
 				URL: beatmapSet.Covers.SlimCover2x,
-			}
+			},
+		}
 
-			if gotDownloadedBeatmap {
-				log.Println(downloadedBeatmap)
-				if foundPatch {
-					embed.Description = patch.Stats().String()
-				}
+		if gotDownloadedBeatmap {
+			log.Println(downloadedBeatmap)
+			if foundPatch {
+				embed.Description = patch.Stats().String()
 			}
 		}
+
 		for _, channelId := range channels {
 			bot.ChannelMessageSendEmbed(channelId, embed)
 		}
@@ -301,10 +289,10 @@ func (bot *Bot) newMessageHandler(s *discordgo.Session, m *discordgo.MessageCrea
 			return
 		}
 
-		go func() {
-			time.Sleep(refreshInterval)
-			bot.requests <- mapperId
-		}()
+		// go func() {
+		// 	time.Sleep(refreshInterval)
+		// 	bot.requests <- mapperId
+		// }()
 
 		bot.ChannelMessageSend(m.ChannelID, fmt.Sprintf("subscribed to %+v", mapper))
 	}

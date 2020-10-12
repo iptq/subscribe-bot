@@ -24,6 +24,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Println("opened db")
 
 	bot, err := NewBot(&config, db, requests)
 	if err != nil {
@@ -59,5 +60,6 @@ func main() {
 
 	db.Close()
 	bot.Close()
+	ticker.Stop()
 	os.Exit(code)
 }

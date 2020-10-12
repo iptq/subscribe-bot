@@ -16,8 +16,9 @@ type Beatmapset struct {
 	Creator       string `json:"creator"`
 	UserId        int    `json:"user_id"`
 
-	Covers   BeatmapCovers `json:"covers"`
-	Beatmaps []Beatmap     `json:"beatmaps,omitempty"`
+	Covers      BeatmapCovers `json:"covers"`
+	Beatmaps    []Beatmap     `json:"beatmaps,omitempty"`
+	LastUpdated string        `json:"last_updated,omitempty"`
 }
 
 type Beatmap struct {
@@ -64,4 +65,8 @@ type EventUser struct {
 	Username         string `json:"username"`
 	URL              string `json:"url"`
 	PreviousUsername string `json:"previousUsername,omitempty"`
+}
+
+type BeatmapSearch struct {
+	Beatmapsets []Beatmapset `json:"beatmapsets"`
 }
