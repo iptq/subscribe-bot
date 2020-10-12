@@ -7,9 +7,10 @@ package db
 
 import (
 	"strconv"
-	"subscribe-bot/osuapi"
 
 	bolt "go.etcd.io/bbolt"
+
+	"subscribe-bot/osuapi"
 )
 
 var (
