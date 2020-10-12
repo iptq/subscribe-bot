@@ -12,6 +12,7 @@ import (
 	"subscribe-bot/discord"
 	"subscribe-bot/osuapi"
 	"subscribe-bot/scrape"
+	"subscribe-bot/web"
 )
 
 var exit_chan = make(chan int)
@@ -21,10 +22,13 @@ func main() {
 	flag.Parse()
 
 	config, err := config.ReadConfig(*configPath)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	api := osuapi.New(&config)
 
-	db, err := db.OpenDb("db", api)
+	db, err := db.OpenDb(config.DatabasePath, api)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -36,6 +40,7 @@ func main() {
 	}
 
 	go scrape.RunScraper(bot, db, api)
+	go web.RunWeb(&config)
 
 	signal_chan := make(chan os.Signal, 1)
 	signal.Notify(signal_chan,

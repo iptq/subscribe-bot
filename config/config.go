@@ -9,10 +9,19 @@ import (
 )
 
 type Config struct {
+	Debug        bool   `toml:"debug"`
 	BotToken     string `toml:"bot_token"`
 	ClientId     int    `toml:"client_id"`
 	ClientSecret string `toml:"client_secret"`
 	Repos        string `toml:"repos"`
+	DatabasePath string `toml:"db_path"`
+
+	Web WebConfig `toml:"web"`
+}
+
+type WebConfig struct {
+	Host string `toml:"host"`
+	Port int    `toml:"port"`
 }
 
 func ReadConfig(path string) (config Config, err error) {
