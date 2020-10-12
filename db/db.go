@@ -1,4 +1,4 @@
-package main
+package db
 
 // Database is laid out like this:
 // mapper/<mapper_id>/trackers/<channel_id> -> priority
@@ -7,6 +7,7 @@ package main
 
 import (
 	"strconv"
+	"subscribe-bot/osuapi"
 
 	bolt "go.etcd.io/bbolt"
 )
@@ -17,10 +18,10 @@ var (
 
 type Db struct {
 	*bolt.DB
-	api *Osuapi
+	api *osuapi.Osuapi
 }
 
-func OpenDb(path string, api *Osuapi) (db *Db, err error) {
+func OpenDb(path string, api *osuapi.Osuapi) (db *Db, err error) {
 	inner, err := bolt.Open(path, 0666, nil)
 	db = &Db{inner, api}
 	return

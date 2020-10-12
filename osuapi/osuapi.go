@@ -1,4 +1,4 @@
-package main
+package osuapi
 
 import (
 	"context"
@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"golang.org/x/sync/semaphore"
+
+	"subscribe-bot/config"
 )
 
 const BASE_URL = "https://osu.ppy.sh/api/v2"
@@ -27,7 +29,7 @@ type Osuapi struct {
 	clientSecret string
 }
 
-func NewOsuapi(config *Config) *Osuapi {
+func New(config *config.Config) *Osuapi {
 	client := &http.Client{
 		Timeout: 9 * time.Second,
 	}

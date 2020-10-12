@@ -1,4 +1,4 @@
-package main
+package osuapi
 
 type User struct {
 	ID          int    `json:"id"`
@@ -41,15 +41,8 @@ type Event struct {
 	ID        int    `json:"id"`
 	Type      string `json:"type"`
 
-	// type: achievement
 	Achievement EventAchievement `json:"achievement,omitempty"`
-
-	// type: beatmapsetApprove
-	// type: beatmapsetDelete
-	// type: beatmapsetRevive
-	// type: beatmapsetUpdate
-	// type: beatmapsetUpload
-	Beatmapset EventBeatmapset `json:"beatmapset,omitempty"`
+	Beatmapset  EventBeatmapset  `json:"beatmapset,omitempty"`
 
 	User EventUser `json:"user,omitempty"`
 }

@@ -1,4 +1,4 @@
-package main
+package discord
 
 import (
 	"errors"
@@ -17,18 +17,21 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
+
+	"subscribe-bot/config"
+	"subscribe-bot/db"
+	"subscribe-bot/osuapi"
 )
 
 type Bot struct {
 	*discordgo.Session
 	mentionRe *regexp.Regexp
-	db        *Db
-	api       *Osuapi
-	requests  chan int
-	config    *Config
+	db        *db.Db
+	api       *osuapi.Osuapi
+	config    *config.Config
 }
 
-func NewBot(config *Config, db *Db, requests chan int) (bot *Bot, err error) {
+func NewBot(config *config.Config, db *db.Db, api *osuapi.Osuapi) (bot *Bot, err error) {
 	s, err := discordgo.New("Bot " + config.BotToken)
 	if err != nil {
 		return
@@ -45,7 +48,7 @@ func NewBot(config *Config, db *Db, requests chan int) (bot *Bot, err error) {
 		return
 	}
 
-	bot = &Bot{s, re, db, db.api, requests, config}
+	bot = &Bot{s, re, db, api, config}
 	s.AddHandler(bot.errWrap(bot.newMessageHandler))
 	return
 }
@@ -74,7 +77,7 @@ func (bot *Bot) errWrap(fn interface{}) interface{} {
 	return newFunc.Interface()
 }
 
-func (bot *Bot) NotifyNewBeatmap(channels []string, newMaps []Beatmapset) (err error) {
+func (bot *Bot) NotifyNewBeatmap(channels []string, newMaps []osuapi.Beatmapset) (err error) {
 	for _, beatmapSet := range newMaps {
 		var eventTime time.Time
 		eventTime, err = time.Parse(time.RFC3339, beatmapSet.LastUpdated)
@@ -220,7 +223,7 @@ type BeatmapsetDownloaded struct {
 	Path string
 }
 
-func (bot *Bot) downloadBeatmapTo(beatmapSet *Beatmapset, repo *git.Repository, repoDir string) (err error) {
+func (bot *Bot) downloadBeatmapTo(beatmapSet *osuapi.Beatmapset, repo *git.Repository, repoDir string) (err error) {
 	// clear all OSU files
 	files, err := ioutil.ReadDir(repoDir)
 	if err != nil {
@@ -244,7 +247,7 @@ func (bot *Bot) downloadBeatmapTo(beatmapSet *Beatmapset, repo *git.Repository, 
 	return
 }
 
-func (bot *Bot) getBeatmapsetInfo(event Event) (beatmapSet Beatmapset, err error) {
+func (bot *Bot) getBeatmapsetInfo(event osuapi.Event) (beatmapSet osuapi.Beatmapset, err error) {
 	beatmapSetId, err := strconv.Atoi(strings.TrimPrefix(event.Beatmapset.URL, "/s/"))
 	if err != nil {
 		return
@@ -283,7 +286,7 @@ func (bot *Bot) newMessageHandler(s *discordgo.Session, m *discordgo.MessageCrea
 			return
 		}
 
-		var mapper User
+		var mapper osuapi.User
 		mapperName := strings.Join(parts[1:], " ")
 		mapper, err = bot.api.GetUser(mapperName)
 		if err != nil {

@@ -1,20 +1,24 @@
-package main
+package scrape
 
 import (
 	"fmt"
 	"log"
 	"time"
+
+	"subscribe-bot/db"
+	"subscribe-bot/discord"
+	"subscribe-bot/osuapi"
 )
 
 var (
 	refreshInterval = 30 * time.Second
-	ticker          = time.NewTicker(refreshInterval)
+	Ticker          = time.NewTicker(refreshInterval)
 )
 
-func RunScraper(bot *Bot, db *Db, api *Osuapi, requests chan int) {
+func RunScraper(bot *discord.Bot, db *db.Db, api *osuapi.Osuapi) {
 	lastUpdateTime := time.Now()
 	go func() {
-		for ; true; <-ticker.C {
+		for ; true; <-Ticker.C {
 			// build a list of currently tracked mappers
 			trackedMappers := make(map[int]int)
 			db.IterTrackedMappers(func(userId int) error {
@@ -23,12 +27,12 @@ func RunScraper(bot *Bot, db *Db, api *Osuapi, requests chan int) {
 			})
 
 			// TODO: is this sorted for sure??
-			pendingSets, err := bot.api.SearchBeatmaps("pending")
+			pendingSets, err := api.SearchBeatmaps("pending")
 			if err != nil {
 				log.Println("error fetching pending sets", err)
 			}
 
-			allNewMaps := make(map[int][]Beatmapset, 0)
+			allNewMaps := make(map[int][]osuapi.Beatmapset, 0)
 			var newLastUpdateTime = time.Unix(0, 0)
 			for _, beatmapSet := range pendingSets.Beatmapsets {
 				updatedTime, err := time.Parse(time.RFC3339, beatmapSet.LastUpdated)
@@ -48,7 +52,7 @@ func RunScraper(bot *Bot, db *Db, api *Osuapi, requests chan int) {
 				mapperId := beatmapSet.UserId
 				if _, ok := trackedMappers[mapperId]; ok {
 					if _, ok2 := allNewMaps[mapperId]; !ok2 {
-						allNewMaps[mapperId] = make([]Beatmapset, 0)
+						allNewMaps[mapperId] = make([]osuapi.Beatmapset, 0)
 					}
 
 					allNewMaps[mapperId] = append(allNewMaps[mapperId], beatmapSet)
@@ -77,12 +81,12 @@ func RunScraper(bot *Bot, db *Db, api *Osuapi, requests chan int) {
 	}()
 }
 
-func getNewMaps(db *Db, api *Osuapi, userId int) (newMaps []Event, err error) {
+func getNewMaps(db *db.Db, api *osuapi.Osuapi, userId int) (newMaps []osuapi.Event, err error) {
 	// see if there's a last event
 	hasLastEvent, lastEventId := db.MapperLastEvent(userId)
-	newMaps = make([]Event, 0)
+	newMaps = make([]osuapi.Event, 0)
 	var (
-		events            []Event
+		events            []osuapi.Event
 		newLatestEvent    = 0
 		updateLatestEvent = false
 	)
@@ -151,11 +155,4 @@ func getNewMaps(db *Db, api *Osuapi, userId int) (newMaps []Event, err error) {
 	}
 
 	return
-}
-
-func startTimers(db *Db, requests chan int) {
-	db.IterTrackedMappers(func(userId int) error {
-		requests <- userId
-		return nil
-	})
 }
