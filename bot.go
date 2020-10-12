@@ -203,7 +203,7 @@ func (bot *Bot) NotifyNewEvent(channels []string, newMaps []Event) (err error) {
 
 			if gotDownloadedBeatmap {
 				log.Println(downloadedBeatmap)
-				embed.Description = patch.String()
+				embed.Description = patch.Stats().String()
 			}
 		}
 		for _, channelId := range channels {
