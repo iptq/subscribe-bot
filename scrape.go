@@ -15,11 +15,10 @@ func RunScraper(bot *Bot, db *Db, api *Osuapi, requests chan int) {
 	go startTimers(db, requests)
 
 	for userId := range requests {
-		log.Println("scraping", userId)
+		log.Println("scraping user", userId)
 		newMaps, err := getNewMaps(db, api, userId)
 		if err != nil {
 			log.Println("err getting new maps:", err)
-			exit_chan <- 1
 		}
 
 		db.IterTrackingChannels(userId, func(channelId string) error {
@@ -45,12 +44,10 @@ func getNewMaps(db *Db, api *Osuapi, userId int) (newMaps []Event, err error) {
 		updateLatestEvent = false
 	)
 	if hasLastEvent {
-		log.Printf("last event id for %d is %d\n", userId, lastEventId)
 		offset := 0
 
 	loop:
 		for {
-			log.Println("loading user events from", offset)
 			events, err = api.GetUserEvents(userId, 50, offset)
 			if err != nil {
 				err = fmt.Errorf("couldn't load events for user %d, offset %d: %w", userId, offset, err)
