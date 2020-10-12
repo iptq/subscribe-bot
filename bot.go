@@ -90,9 +90,10 @@ func (bot *Bot) NotifyNewEvent(channels []string, newMaps []Event) (err error) {
 			downloadedBeatmap    BeatmapsetDownloaded
 			// status               git.Status
 
-			commit *object.Commit
-			parent *object.Commit
-			patch  *object.Patch
+			commit     *object.Commit
+			parent     *object.Commit
+			patch      *object.Patch
+			foundPatch = false
 			// commitFiles *object.FileIter
 		)
 		beatmapSet, err = bot.getBeatmapsetInfo(event)
@@ -167,12 +168,16 @@ func (bot *Bot) NotifyNewEvent(channels []string, newMaps []Event) (err error) {
 				return
 			}
 			parent, err = commit.Parent(0)
-			if err != nil {
+			if err == object.ErrParentNotFound {
+
+			} else if err != nil {
 				return
-			}
-			patch, err = commit.Patch(parent)
-			if err != nil {
-				return
+			} else {
+				patch, err = commit.Patch(parent)
+				if err != nil {
+					return
+				}
+				foundPatch = true
 			}
 
 			// report diffs
@@ -203,7 +208,9 @@ func (bot *Bot) NotifyNewEvent(channels []string, newMaps []Event) (err error) {
 
 			if gotDownloadedBeatmap {
 				log.Println(downloadedBeatmap)
-				embed.Description = patch.Stats().String()
+				if foundPatch {
+					embed.Description = patch.Stats().String()
+				}
 			}
 		}
 		for _, channelId := range channels {
