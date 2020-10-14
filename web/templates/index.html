@@ -14,11 +14,24 @@
 
             <p>Maps:</p>
 
-            <ul class="list-disc">
+            <table class="table-auto">
+                <thead>
+                    <th>Mapper</th>
+                    <th>Artist</th>
+                    <th>Title</th>
+                    <th>Links</th>
+                </thead>
                 {{ range .Beatmapsets }}
-                <li><a href="https://osu.ppy.sh/s/{{ .ID }}" class="underline">{{ .Artist }} - {{ .Title }}</a></li>
+                    <tbody>
+                        <td>{{ .Creator }}</td>
+                        <td>{{ .Artist }}</td>
+                        <td>{{ .Title }}</td>
+                        <td>
+                            <a href="https://osu.ppy.sh/s/{{ .ID }}" class="underline">osu</a>
+                        </td>
+                    </tbody>
                 {{ end }}
-            </ul>
+            </table>
         </div>
     </body>
 </html>

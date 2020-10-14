@@ -10,6 +10,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/foolin/goview"
@@ -123,7 +124,7 @@ func RunWeb(config *config.Config, api *osuapi.Osuapi) {
 
 func getRepos(config *config.Config, api *osuapi.Osuapi) []osuapi.Beatmapset {
 	expensive := func() (interface{}, error) {
-		repos := make([]osuapi.Beatmapset, 0)
+		repos := make([]int, 0)
 		reposDir := config.Repos
 		users, _ := ioutil.ReadDir(reposDir)
 
@@ -137,12 +138,23 @@ func getRepos(config *config.Config, api *osuapi.Osuapi) []osuapi.Beatmapset {
 				fmt.Println(mapDir)
 
 				id, _ := strconv.Atoi(mapId.Name())
-				bs, _ := api.GetBeatmapSet(id)
-				repos = append(repos, bs)
+				repos = append(repos, id)
 			}
 		}
 
-		return repos, nil
+		beatmapSets := make([]osuapi.Beatmapset, len(repos))
+		var wg sync.WaitGroup
+		for i, repo := range repos {
+			wg.Add(1)
+			go func(i int, repo int) {
+				bs, _ := api.GetBeatmapSet(repo)
+				beatmapSets[i] = bs
+				wg.Done()
+			}(i, repo)
+		}
+		wg.Wait()
+
+		return beatmapSets, nil
 	}
 
 	result, _, _ := cache.Memoize("key1", expensive)
