@@ -177,7 +177,7 @@ func (bot *Bot) NotifyNewBeatmap(channels []string, newMaps []osuapi.Beatmapset)
 		}
 
 		embed := &discordgo.MessageEmbed{
-			URL:       fmt.Sprintf("%s/map/%d/%d", bot.config.Web.ServedAt, beatmapSet.UserID, beatmapSet.ID),
+			URL:       fmt.Sprintf("%s/map/%d/%d/versions", bot.config.Web.ServedAt, beatmapSet.UserID, beatmapSet.ID),
 			Title:     fmt.Sprintf("Update: %s - %s", beatmapSet.Artist, beatmapSet.Title),
 			Timestamp: eventTime.Format(time.RFC3339),
 			Author: &discordgo.MessageEmbedAuthor{
