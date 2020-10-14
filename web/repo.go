@@ -94,7 +94,7 @@ func (web *Web) mapZip(c *gin.Context) {
 	files := tree.Files()
 
 	c.Writer.Header().Set("Content-type", "application/octet-stream")
-	c.Writer.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s.zip", mapId))
+	c.Writer.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s-%s.zip", mapId, hash))
 	c.Stream(func(w io.Writer) bool {
 		ar := zip.NewWriter(w)
 		for {
