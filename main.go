@@ -40,7 +40,7 @@ func main() {
 	}
 
 	go scrape.RunScraper(&config, bot, db, api)
-	go web.RunWeb(&config)
+	go web.RunWeb(&config, api)
 
 	signal_chan := make(chan os.Signal, 1)
 	signal.Notify(signal_chan,

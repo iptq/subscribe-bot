@@ -15,8 +15,8 @@
             <p>Maps:</p>
 
             <ul class="list-disc">
-                {{ range .Repos }}
-                    <li>{{ . }}</li>
+                {{ range .Beatmapsets }}
+                <li><a href="https://osu.ppy.sh/s/{{ .ID }}" class="underline">{{ .Artist }} - {{ .Title }}</a></li>
                 {{ end }}
             </ul>
         </div>

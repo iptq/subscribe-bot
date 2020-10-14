@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,15 +17,21 @@ import (
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/kofalt/go-memoize"
 
 	"subscribe-bot/config"
+	"subscribe-bot/osuapi"
 )
 
 const (
 	USER_KEY = "user"
 )
 
-func RunWeb(config *config.Config) {
+var (
+	cache = memoize.NewMemoizer(90*time.Second, 10*time.Minute)
+)
+
+func RunWeb(config *config.Config, api *osuapi.Osuapi) {
 	hc := http.Client{
 		Timeout: 10 * time.Second,
 	}
@@ -101,12 +108,12 @@ func RunWeb(config *config.Config) {
 			}
 		}
 
-		repos, _ := getRepos(config)
+		beatmapSets := getRepos(config, api)
 
 		// render with master
 		c.HTML(http.StatusOK, "index.html", gin.H{
-			"LoggedIn": loggedIn,
-			"Repos":    repos,
+			"LoggedIn":    loggedIn,
+			"Beatmapsets": beatmapSets,
 		})
 	})
 
@@ -114,28 +121,30 @@ func RunWeb(config *config.Config) {
 	r.Run(addr)
 }
 
-func getRepos(config *config.Config) (repos []string, err error) {
-	repos = make([]string, 0)
-	reposDir := config.Repos
-	users, err := ioutil.ReadDir(reposDir)
-	if err != nil {
-		return
-	}
+func getRepos(config *config.Config, api *osuapi.Osuapi) []osuapi.Beatmapset {
+	expensive := func() (interface{}, error) {
+		repos := make([]osuapi.Beatmapset, 0)
+		reposDir := config.Repos
+		users, _ := ioutil.ReadDir(reposDir)
 
-	for _, user := range users {
-		userDir := path.Join(reposDir, user.Name())
-		var maps []os.FileInfo
-		maps, err = ioutil.ReadDir(userDir)
-		if err != nil {
-			return
+		for _, user := range users {
+			userDir := path.Join(reposDir, user.Name())
+			var maps []os.FileInfo
+			maps, _ = ioutil.ReadDir(userDir)
+
+			for _, mapId := range maps {
+				mapDir := path.Join(userDir, mapId.Name())
+				fmt.Println(mapDir)
+
+				id, _ := strconv.Atoi(mapId.Name())
+				bs, _ := api.GetBeatmapSet(id)
+				repos = append(repos, bs)
+			}
 		}
 
-		for _, mapId := range maps {
-			mapDir := path.Join(userDir, mapId.Name())
-			fmt.Println(mapDir)
-			repos = append(repos, user.Name()+"/"+mapId.Name())
-		}
+		return repos, nil
 	}
 
-	return
+	result, _, _ := cache.Memoize("key1", expensive)
+	return result.([]osuapi.Beatmapset)
 }
