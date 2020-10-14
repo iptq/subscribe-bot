@@ -152,7 +152,7 @@ func (bot *Bot) NotifyNewBeatmap(channels []string, newMaps []osuapi.Beatmapset)
 			},
 		)
 		if err != nil {
-			err = fmt.Errorf("couldn't create commit for %s: %w", beatmapSet.ID, err)
+			err = fmt.Errorf("couldn't create commit for %d: %w", beatmapSet.ID, err)
 			return
 		}
 
@@ -177,7 +177,7 @@ func (bot *Bot) NotifyNewBeatmap(channels []string, newMaps []osuapi.Beatmapset)
 		}
 
 		embed := &discordgo.MessageEmbed{
-			URL:       fmt.Sprintf("https://osu.ppy.sh/s/%d", beatmapSet.ID),
+			URL:       fmt.Sprintf("%s/map/%d/%d", bot.config.Web.ServedAt, beatmapSet.UserID, beatmapSet.ID),
 			Title:     fmt.Sprintf("Update: %s - %s", beatmapSet.Artist, beatmapSet.Title),
 			Timestamp: eventTime.Format(time.RFC3339),
 			Author: &discordgo.MessageEmbedAuthor{
