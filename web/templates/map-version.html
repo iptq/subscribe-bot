@@ -1,0 +1,27 @@
+{{ define "content" }}
+
+<small>up to the latest 20 revisions, pagination coming later</small>
+
+<table>
+    <thead>
+        <th>Date</th>
+        <th>Links</th>
+        <th>Summary</th>
+    </thead>
+
+    <tbody>
+    {{ range .Versions }}
+        <tr>
+            <td><span title="{{ .Date }}">{{ .HumanDate }}</span></td>
+            <td>
+                {{ if .HasParent }}
+                    <a href="patch/{{ .Hash }}">patch</a>
+                {{ end }}
+            </td>
+            <td><pre>{{ .Summary }}</pre></td>
+        </tr>
+    {{ end }}
+    </tbody>
+</table>
+
+{{ end }}

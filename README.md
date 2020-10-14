@@ -4,8 +4,9 @@ subscribe-bot
 Subscribes to OSU map updates and stores versions for later review.
 
 Please don't run a separate bot, the official one is `subscribe-bot#8789`. If
-you want to contribute or test the bot, then here are instructions on how to
-run it:
+you want to contribute or test the bot, instructions on how to run it are below.
+
+Join the [Discord][2]
 
 How to run
 ----------
@@ -37,3 +38,4 @@ License
 [GPL3][1]
 
 [1]: https://www.gnu.org/licenses/gpl-3.0.en.html
+[2]: https://discord.gg/eqjVG2H

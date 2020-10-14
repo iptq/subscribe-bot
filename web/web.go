@@ -1,15 +1,12 @@
 package web
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"os"
 	"path"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -32,108 +29,77 @@ var (
 	cache = memoize.NewMemoizer(90*time.Second, 10*time.Minute)
 )
 
+type Web struct {
+	config *config.Config
+	api    *osuapi.Osuapi
+	hc     *http.Client
+}
+
 func RunWeb(config *config.Config, api *osuapi.Osuapi) {
-	hc := http.Client{
+	hc := &http.Client{
 		Timeout: 10 * time.Second,
 	}
 
-	if !config.Debug {
+	web := Web{config, api, hc}
+	web.Run()
+}
+
+func (web *Web) Run() {
+	if !web.config.Debug {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
 	r := gin.Default()
 	r.Use(gin.Recovery())
 	r.Use(static.Serve("/static", static.LocalFile("web/static", false)))
-	r.Use(sessions.Sessions("mysession", sessions.NewCookieStore([]byte(config.Web.SessionSecret))))
+	r.Use(sessions.Sessions("mysession", sessions.NewCookieStore([]byte(web.config.Web.SessionSecret))))
 
 	r.HTMLRender = ginview.New(goview.Config{
 		Root:         "web/templates",
-		DisableCache: config.Debug,
+		Master:       "master.html",
+		DisableCache: web.config.Debug,
 	})
 
-	r.GET("/logout", func(c *gin.Context) {
-		session := sessions.Default(c)
-		session.Delete("access_token")
-		session.Save()
+	r.GET("/logout", web.logout)
 
-		c.Redirect(http.StatusTemporaryRedirect, "/")
-	})
+	r.GET("/login", web.login)
 
-	r.GET("/login", func(c *gin.Context) {
-		url := url.URL{
-			Scheme: "https",
-			Host:   "osu.ppy.sh",
-			Path:   "/oauth/authorize",
-		}
-		q := url.Query()
-		q.Set("client_id", config.Oauth.ClientId)
-		q.Set("redirect_uri", config.Web.ServedAt+"/login/callback")
-		q.Set("response_type", "code")
-		q.Set("scope", "identify public")
-		q.Set("state", "urmom")
-		url.RawQuery = q.Encode()
-		fmt.Println("redirecting to", url.String())
-		c.Redirect(http.StatusTemporaryRedirect, url.String())
-	})
+	r.GET("/login/callback", web.loginCallback)
 
-	r.GET("/login/callback", func(c *gin.Context) {
-		receivedCode := c.Query("code")
+	r.GET("/map/:userId/:mapId/versions", web.mapVersions)
 
-		bodyQuery := url.Values{}
-		bodyQuery.Set("client_id", config.Oauth.ClientId)
-		bodyQuery.Set("client_secret", config.Oauth.ClientSecret)
-		bodyQuery.Set("code", receivedCode)
-		bodyQuery.Set("grant_type", "authorization_code")
-		bodyQuery.Set("redirect_uri", config.Web.ServedAt+"/login/callback")
-		body := strings.NewReader(bodyQuery.Encode())
-		resp, _ := hc.Post("https://osu.ppy.sh/oauth/token", "application/x-www-form-urlencoded", body)
-		respBody, _ := ioutil.ReadAll(resp.Body)
-		type OsuToken struct {
-			TokenType    string `json:"token_type"`
-			ExpiresIn    int    `json:"expires_in"`
-			AccessToken  string `json:"access_token"`
-			RefreshToken string `json:"refresh_token"`
-		}
-		var token OsuToken
-		_ = json.Unmarshal(respBody, &token)
-		fmt.Println("TOKEN", token)
-
-		session := sessions.Default(c)
-		session.Set("access_token", token.AccessToken)
-		session.Save()
-
-		c.Redirect(http.StatusTemporaryRedirect, "/")
-	})
+	r.GET("/map/:userId/:mapId/patch/:hash", web.mapPatch)
 
 	r.GET("/", func(c *gin.Context) {
-		session := sessions.Default(c)
-		var accessToken string
-		loggedIn := false
-		accessTokenI := session.Get("access_token")
-		if accessTokenI != nil {
-			accessToken = accessTokenI.(string)
-			if len(accessToken) > 0 {
-				loggedIn = true
-			}
-		}
-
-		beatmapSets := getRepos(config, api)
-
-		// render with master
+		beatmapSets := web.listRepos()
 		c.HTML(http.StatusOK, "index.html", gin.H{
-			"LoggedIn":    loggedIn,
+			"LoggedIn":    isLoggedIn(c),
 			"Beatmapsets": beatmapSets,
 		})
 	})
 
-	addr := fmt.Sprintf("%s:%d", config.Web.Host, config.Web.Port)
+	addr := fmt.Sprintf("%s:%d", web.config.Web.Host, web.config.Web.Port)
 	r.Run(addr)
 }
 
-func getRepos(config *config.Config, api *osuapi.Osuapi) []osuapi.Beatmapset {
+func isLoggedIn(c *gin.Context) bool {
+	session := sessions.Default(c)
+	var accessToken string
+	loggedIn := false
+	accessTokenI := session.Get("access_token")
+	if accessTokenI != nil {
+		accessToken = accessTokenI.(string)
+		if len(accessToken) > 0 {
+			loggedIn = true
+		}
+	}
+	return loggedIn
+}
+
+func (web *Web) listRepos() []osuapi.Beatmapset {
 	expensive := func() (interface{}, error) {
 		repos := make([]int, 0)
-		reposDir := config.Repos
+		reposDir := web.config.Repos
 		users, _ := ioutil.ReadDir(reposDir)
 
 		for _, user := range users {
@@ -155,7 +121,7 @@ func getRepos(config *config.Config, api *osuapi.Osuapi) []osuapi.Beatmapset {
 		for i, repo := range repos {
 			wg.Add(1)
 			go func(i int, repo int) {
-				bs, _ := api.GetBeatmapSet(repo)
+				bs, _ := web.api.GetBeatmapSet(repo)
 				beatmapSets[i] = bs
 				wg.Done()
 			}(i, repo)

@@ -6,6 +6,7 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/boj/redistore v0.0.0-20180917114910-cd5dcc76aeff // indirect
 	github.com/bwmarrin/discordgo v0.22.0
+	github.com/dustin/go-humanize v1.0.0
 	github.com/foolin/goview v0.3.0
 	github.com/gin-contrib/static v0.0.0-20200916080430-d45d9a37d28e
 	github.com/gin-gonic/contrib v0.0.0-20201005132743-ca038bbf2944

@@ -1,51 +1,27 @@
-<!DOCTYPE html>
-<html lang="en">
-    <head>
-        <title>subscribe-bot</title>
+{{ define "content" }}
 
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+<p>Maps:</p>
 
-        <link rel="stylesheet" href="/static/main.css" />
-    </head>
+<table class="table-auto">
+    <thead>
+        <th>Links</th>
+        <th>Title</th>
+        <th>Mapper</th>
+    </thead>
+    <tbody>
+    {{ range .Beatmapsets }}
+        <tr>
+            <td>
+                <a href="https://osu.ppy.sh/s/{{ .ID }}" target="_blank">osu</a>
+                <a href="/map/{{ .UserID }}/{{ .ID }}/versions">versions</a>
+            </td>
+            <td>{{ .Artist }} - {{ .Title }}</td>
+            <td>
+                <a href="https://osu.ppy.sh/u/{{ .UserID }}" target="_blank">{{ .Creator }}</a>
+            </td>
+        </tr>
+    {{ end }}
+    </tbody>
+</table>
 
-    <body>
-        <div class="container">
-            <h1 class="title">
-                <a href="/">subscribe-bot</a>
-            </h1>
-
-            <small>logging in with your osu account does nothing</small>
-
-            <div class="nav-bar">
-                <a href="/">home</a>
-
-                {{ if .LoggedIn }}
-                    <a href="/logout">logout</a>
-                {{ else }}
-                    <a href="/login">login</a>
-                {{ end }}
-            </div>
-
-            <p>Maps:</p>
-
-            <table class="table-auto">
-                <thead>
-                    <th>Mapper</th>
-                    <th>Title</th>
-                    <th>Links</th>
-                </thead>
-                {{ range .Beatmapsets }}
-                    <tbody>
-                        <td>
-                            <a href="https://osu.ppy.sh/u/{{ .UserID }}" target="_blank">{{ .Creator }}</a>
-                        </td>
-                        <td>{{ .Artist }} - {{ .Title }}</td>
-                        <td>
-                            <a href="https://osu.ppy.sh/s/{{ .ID }}" target="_blank">osu</a>
-                        </td>
-                    </tbody>
-                {{ end }}
-            </table>
-        </div>
-    </body>
-</html>
+{{ end }}
