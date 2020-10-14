@@ -29,14 +29,14 @@ func RunWeb(config *config.Config) {
 		Timeout: 10 * time.Second,
 	}
 
+	if !config.Debug {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
 	r := gin.Default()
 	r.Use(gin.Recovery())
 	r.Use(static.Serve("/static", static.LocalFile("web/static", false)))
 	r.Use(sessions.Sessions("mysession", sessions.NewCookieStore([]byte(config.Web.SessionSecret))))
-
-	if !config.Debug {
-		gin.SetMode(gin.ReleaseMode)
-	}
 
 	r.HTMLRender = ginview.New(goview.Config{
 		Root:         "web/templates",
