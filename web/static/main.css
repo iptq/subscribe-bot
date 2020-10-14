@@ -1,0 +1,40 @@
+body, html {
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.title a {
+    color: black;
+    text-decoration: none;
+}
+
+.nav-bar {
+    background-color: #09c;
+    padding: 5px;
+}
+
+.nav-bar a {
+    color: white;
+    padding: 7px;
+    margin: 0px 3px;
+}
+
+/* containers */
+
+.container {
+  width: 90%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media only screen and (min-width: 33.75em) {  /* 540px */
+  .container {
+    width: 80%;
+  }
+}
+
+@media only screen and (min-width: 60em) { /* 960px */
+  .container {
+    width: 75%;
+    max-width: 60rem;
+  }
+}

@@ -51,6 +51,14 @@ func RunWeb(config *config.Config, api *osuapi.Osuapi) {
 		DisableCache: config.Debug,
 	})
 
+	r.GET("/logout", func(c *gin.Context) {
+		session := sessions.Default(c)
+		session.Delete("access_token")
+		session.Save()
+
+		c.Redirect(http.StatusTemporaryRedirect, "/")
+	})
+
 	r.GET("/login", func(c *gin.Context) {
 		url := url.URL{
 			Scheme: "https",
