@@ -74,7 +74,7 @@ func (web *Web) mapPatch(c *gin.Context) {
 	hashObj := plumbing.NewHash(hash)
 	commit, _ := repo.CommitObject(hashObj)
 	parent, _ := commit.Parent(0)
-	patch, _ := commit.Patch(parent)
+	patch, _ := parent.Patch(commit)
 
 	c.String(http.StatusOK, "text/plain", patch.String())
 }

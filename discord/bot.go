@@ -168,7 +168,7 @@ func (bot *Bot) NotifyNewBeatmap(channels []string, newMaps []osuapi.Beatmapset)
 			err = fmt.Errorf("couldn't retrieve commit parent: %w", err)
 			return
 		} else {
-			patch, err = commit.Patch(parent)
+			patch, err = parent.Patch(commit)
 			if err != nil {
 				err = fmt.Errorf("couldn't retrieve patch: %w", err)
 				return
