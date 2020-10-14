@@ -31,7 +31,7 @@ func (web *Web) mapVersions(c *gin.Context) {
 
 	versions := make([]Revision, 0)
 	logIter, _ := repo.Log(&git.LogOptions{})
-	for {
+	for i := 0; i < 20; i++ {
 		commit, err := logIter.Next()
 		if err == io.EOF {
 			break
