@@ -45,7 +45,7 @@ func (api *Osuapi) Token() (token string, err error) {
 	}
 
 	data := fmt.Sprintf(
-		"client_id=%d&client_secret=%s&grant_type=client_credentials&scope=public",
+		"client_id=%s&client_secret=%s&grant_type=client_credentials&scope=public",
 		api.config.Oauth.ClientId,
 		api.config.Oauth.ClientSecret,
 	)

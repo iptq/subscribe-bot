@@ -299,11 +299,6 @@ func (bot *Bot) newMessageHandler(s *discordgo.Session, m *discordgo.MessageCrea
 			return
 		}
 
-		// go func() {
-		// 	time.Sleep(refreshInterval)
-		// 	bot.requests <- mapperId
-		// }()
-
 		bot.ChannelMessageSend(m.ChannelID, fmt.Sprintf("subscribed to %+v", mapper))
 	}
 

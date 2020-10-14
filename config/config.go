@@ -19,13 +19,15 @@ type Config struct {
 }
 
 type OauthConfig struct {
-	ClientId     int    `toml:"client_id"`
+	ClientId     string `toml:"client_id"`
 	ClientSecret string `toml:"client_secret"`
 }
 
 type WebConfig struct {
-	Host string `toml:"host"`
-	Port int    `toml:"port"`
+	Host          string `toml:"host"`
+	Port          int    `toml:"port"`
+	ServedAt      string `toml:"served_at"`
+	SessionSecret string `toml:"session_secret"`
 }
 
 func ReadConfig(path string) (config Config, err error) {

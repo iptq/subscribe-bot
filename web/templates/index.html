@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>subscribe-bot</title>
+
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <link rel="stylesheet" href="/static/tailwind.min.css" />
+    </head>
+
+    <body>
+        <div class="container mx-auto">
+            <p>Logged in: {{ .LoggedIn }}</p>
+
+            <p>Maps:</p>
+
+            <ul class="list-disc">
+                {{ range .Repos }}
+                    <li>{{ . }}</li>
+                {{ end }}
+            </ul>
+        </div>
+    </body>
+</html>

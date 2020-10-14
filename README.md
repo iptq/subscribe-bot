@@ -22,6 +22,15 @@ How to run
 1. Run the executable, passing `-config {path}` in case you want to use a
    different config file than `config.toml`.
 
+Architecture
+------------
+
+There's several independent services running within:
+
+- Discord bot, which posts updates to the relevant channels in discord
+- Web server, which hosts an HTTP server allowing you to view changes
+- Scraper, which actually polls the OSU API for new updates
+
 License
 -------
 
