@@ -22,7 +22,7 @@ func RunScraper(config *config.Config, bot *discord.Bot, db *db.Db, api *osuapi.
 		for ; true; <-Ticker.C {
 			// build a list of currently tracked mappers
 			trackedMappers := make(map[int]int)
-			db.IterTrackedMappers(func(userId int) error {
+			db.IterAllTrackedMappers(func(userId int) error {
 				trackedMappers[userId] = 1
 				return nil
 			})

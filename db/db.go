@@ -15,6 +15,8 @@ import (
 
 var (
 	LATEST_EVENT = []byte("latestEvent")
+	MAPPERS      = []byte("mapper")
+	CHANNELS     = []byte("channels")
 )
 
 type Db struct {
@@ -56,10 +58,47 @@ func (db *Db) IterTrackingChannels(mapperId int, fn func(channelId string) error
 	return
 }
 
-// Loop over tracked mappers
-func (db *Db) IterTrackedMappers(fn func(userId int) error) (err error) {
+// Loop over tracked mappers for this channel
+func (db *Db) IterChannelTrackedMappers(channelId string, fn func(userId int) error) (err error) {
 	err = db.DB.View(func(tx *bolt.Tx) error {
-		mappers := tx.Bucket([]byte("mapper"))
+		channels := tx.Bucket(CHANNELS)
+		if channels == nil {
+			return nil
+		}
+
+		channel := channels.Bucket([]byte(channelId))
+		if channel == nil {
+			return nil
+		}
+
+		tracks := channel.Bucket([]byte("tracks"))
+		if tracks == nil {
+			return nil
+		}
+
+		c := tracks.Cursor()
+		for k, _ := c.First(); k != nil; k, _ = c.Next() {
+			mapperId, err := strconv.Atoi(string(k))
+			if err != nil {
+				return err
+			}
+
+			err = fn(mapperId)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	return
+}
+
+// Loop over all tracked mappers
+func (db *Db) IterAllTrackedMappers(fn func(userId int) error) (err error) {
+	err = db.DB.View(func(tx *bolt.Tx) error {
+		mappers := tx.Bucket(MAPPERS)
 		if mappers == nil {
 			return nil
 		}
@@ -184,7 +223,7 @@ func (db *Db) ChannelTrackMapper(channelId string, mapperId int, priority int) (
 			}
 		}
 		{
-			channels, err := tx.CreateBucketIfNotExists([]byte("channels"))
+			channels, err := tx.CreateBucketIfNotExists(CHANNELS)
 			if err != nil {
 				return err
 			}
@@ -214,7 +253,7 @@ func (db *Db) Close() {
 }
 
 func getMapper(tx *bolt.Tx, userId int) (mapper *bolt.Bucket) {
-	mappers := tx.Bucket([]byte("mapper"))
+	mappers := tx.Bucket(MAPPERS)
 	if mappers == nil {
 		return nil
 	}
@@ -228,7 +267,7 @@ func getMapper(tx *bolt.Tx, userId int) (mapper *bolt.Bucket) {
 }
 
 func getMapperMut(tx *bolt.Tx, userId int) (mapper *bolt.Bucket, err error) {
-	mappers, err := tx.CreateBucketIfNotExists([]byte("mapper"))
+	mappers, err := tx.CreateBucketIfNotExists(MAPPERS)
 	if err != nil {
 		return
 	}

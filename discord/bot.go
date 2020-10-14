@@ -300,6 +300,21 @@ func (bot *Bot) newMessageHandler(s *discordgo.Session, m *discordgo.MessageCrea
 		}
 
 		bot.ChannelMessageSend(m.ChannelID, fmt.Sprintf("subscribed to %+v", mapper))
+
+	case "list":
+		mappers := make([]string, 0)
+		bot.db.IterChannelTrackedMappers(m.ChannelID, func(userId int) error {
+			var mapper osuapi.User
+			mapper, err = bot.api.GetUser(strconv.Itoa(userId))
+			if err != nil {
+				return err
+			}
+
+			mappers = append(mappers, mapper.Username)
+			return nil
+		})
+
+		bot.ChannelMessageSend(m.ChannelID, "tracking: "+strings.Join(mappers, ", "))
 	}
 
 	return
