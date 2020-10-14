@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/sync/semaphore"
@@ -26,6 +27,9 @@ type Osuapi struct {
 	token      string
 	expires    time.Time
 	config     *config.Config
+
+	tokenLock       sync.RWMutex
+	isFetchingToken bool
 }
 
 func New(config *config.Config) *Osuapi {
@@ -35,7 +39,13 @@ func New(config *config.Config) *Osuapi {
 
 	// want to cap at around 1000 requests a minute, OSU cap is 1200
 	lock := semaphore.NewWeighted(1000)
-	return &Osuapi{client, lock, "", time.Now(), config}
+
+	return &Osuapi{
+		httpClient: client,
+		lock:       lock,
+		expires:    time.Now(),
+		config:     config,
+	}
 }
 
 func (api *Osuapi) Token() (token string, err error) {
@@ -43,6 +53,16 @@ func (api *Osuapi) Token() (token string, err error) {
 		token = api.token
 		return
 	}
+
+	if api.isFetchingToken {
+		api.tokenLock.RLock()
+		token = api.token
+		api.tokenLock.RUnlock()
+		return
+	}
+
+	api.tokenLock.Lock()
+	api.isFetchingToken = true
 
 	data := fmt.Sprintf(
 		"client_id=%s&client_secret=%s&grant_type=client_credentials&scope=public",
@@ -73,7 +93,9 @@ func (api *Osuapi) Token() (token string, err error) {
 	log.Println("got new access token", osuToken.AccessToken[:12]+"...")
 	api.token = osuToken.AccessToken
 	api.expires = time.Now().Add(time.Duration(osuToken.ExpiresIn) * time.Second)
+
 	token = api.token
+	api.tokenLock.Unlock()
 	return
 }
 
