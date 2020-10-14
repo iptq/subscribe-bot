@@ -68,14 +68,12 @@ func (web *Web) Run() {
 	})
 
 	r.GET("/logout", web.logout)
-
 	r.GET("/login", web.login)
-
 	r.GET("/login/callback", web.loginCallback)
 
 	r.GET("/map/:userId/:mapId/versions", web.mapVersions)
-
 	r.GET("/map/:userId/:mapId/patch/:hash", web.mapPatch)
+	r.GET("/map/:userId/:mapId/zip/:hash", web.mapZip)
 
 	r.GET("/", func(c *gin.Context) {
 		beatmapSets := web.listRepos()

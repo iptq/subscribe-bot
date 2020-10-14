@@ -1,7 +1,9 @@
 package web
 
 import (
+	"archive/zip"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"path"
@@ -75,4 +77,38 @@ func (web *Web) mapPatch(c *gin.Context) {
 	patch, _ := commit.Patch(parent)
 
 	c.String(http.StatusOK, "text/plain", patch.String())
+}
+
+func (web *Web) mapZip(c *gin.Context) {
+	userId := c.Param("userId")
+	mapId := c.Param("mapId")
+	hash := c.Param("hash")
+
+	repoDir := path.Join(web.config.Repos, userId, mapId)
+	repo, _ := git.PlainOpen(repoDir)
+
+	hashObj := plumbing.NewHash(hash)
+	commit, _ := repo.CommitObject(hashObj)
+	tree, _ := commit.Tree()
+
+	files := tree.Files()
+
+	c.Writer.Header().Set("Content-type", "application/octet-stream")
+	c.Writer.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s.zip", mapId))
+	c.Stream(func(w io.Writer) bool {
+		ar := zip.NewWriter(w)
+		for {
+			file, err := files.Next()
+			if err == io.EOF {
+				break
+			}
+
+			reader, _ := file.Reader()
+			fdest, _ := ar.Create(file.Name)
+			io.Copy(fdest, reader)
+		}
+		ar.Close()
+
+		return false
+	})
 }

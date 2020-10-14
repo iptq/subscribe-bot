@@ -22,6 +22,7 @@
         <tr>
             <td><span title="{{ .Date }}">{{ .HumanDate }}</span></td>
             <td>
+                <a href="zip/{{ .Hash }}" target="_blank">zip</a>
                 {{ if .HasParent }}
                     <a href="patch/{{ .Hash }}" target="_blank">patch</a>
                 {{ end }}
