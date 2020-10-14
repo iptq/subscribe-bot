@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"path"
+	"strconv"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -17,6 +18,9 @@ import (
 func (web *Web) mapVersions(c *gin.Context) {
 	userId := c.Param("userId")
 	mapId := c.Param("mapId")
+
+	id, _ := strconv.Atoi(mapId)
+	bs, _ := web.api.GetBeatmapSet(id)
 
 	repoDir := path.Join(web.config.Repos, userId, mapId)
 	repo, _ := git.PlainOpen(repoDir)
@@ -51,8 +55,9 @@ func (web *Web) mapVersions(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "map-version.html", gin.H{
-		"LoggedIn": isLoggedIn(c),
-		"Versions": versions,
+		"Beatmapset": bs,
+		"LoggedIn":   isLoggedIn(c),
+		"Versions":   versions,
 	})
 }
 
