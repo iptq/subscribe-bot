@@ -2,6 +2,7 @@ package web
 
 import (
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -30,17 +31,18 @@ var (
 )
 
 type Web struct {
-	config *config.Config
-	api    *osuapi.Osuapi
-	hc     *http.Client
+	config  *config.Config
+	api     *osuapi.Osuapi
+	hc      *http.Client
+	version string
 }
 
-func RunWeb(config *config.Config, api *osuapi.Osuapi) {
+func RunWeb(config *config.Config, api *osuapi.Osuapi, version string) {
 	hc := &http.Client{
 		Timeout: 10 * time.Second,
 	}
 
-	web := Web{config, api, hc}
+	web := Web{config, api, hc, version}
 	web.Run()
 }
 
@@ -58,6 +60,11 @@ func (web *Web) Run() {
 		Root:         "web/templates",
 		Master:       "master.html",
 		DisableCache: web.config.Debug,
+		Funcs: template.FuncMap{
+			"GitCommit": func() string {
+				return web.version
+			},
+		},
 	})
 
 	r.GET("/logout", web.logout)

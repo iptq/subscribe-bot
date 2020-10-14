@@ -17,6 +17,8 @@ import (
 
 var exit_chan = make(chan int)
 
+var GitCommit string
+
 func main() {
 	configPath := flag.String("config", "config.toml", "Path to the config file (defaults to config.toml)")
 	flag.Parse()
@@ -40,7 +42,7 @@ func main() {
 	}
 
 	go scrape.RunScraper(&config, bot, db, api)
-	go web.RunWeb(&config, api)
+	go web.RunWeb(&config, api, GitCommit)
 
 	signal_chan := make(chan os.Signal, 1)
 	signal.Notify(signal_chan,
