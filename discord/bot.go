@@ -211,7 +211,6 @@ func (bot *Bot) NotifyNewBeatmap(channels []string, newMaps []osuapi.Beatmapset)
 			_, err = bot.ChannelMessageSendEmbed(channelId, embed)
 			if err != nil {
 				err = fmt.Errorf("failed to send to %s: %w", channelId, err)
-				return
 			}
 		}
 	}
