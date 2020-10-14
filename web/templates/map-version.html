@@ -15,7 +15,7 @@
             <td><span title="{{ .Date }}">{{ .HumanDate }}</span></td>
             <td>
                 {{ if .HasParent }}
-                    <a href="patch/{{ .Hash }}">patch</a>
+                    <a href="patch/{{ .Hash }}" target="_blank">patch</a>
                 {{ end }}
             </td>
             <td><pre>{{ .Summary }}</pre></td>
