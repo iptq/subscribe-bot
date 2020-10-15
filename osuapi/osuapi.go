@@ -4,12 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"net/url"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -153,92 +150,6 @@ func (api *Osuapi) Request(action string, url string, result interface{}) (err e
 	}
 
 	err = json.Unmarshal(data, result)
-	if err != nil {
-		return
-	}
-
-	return
-}
-
-func (api *Osuapi) DownloadSingleBeatmap(beatmapId int, path string) (err error) {
-	url := fmt.Sprintf("https://osu.ppy.sh/osu/%d", beatmapId)
-	resp, err := api.httpClient.Get(url)
-
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0644)
-	if err != nil {
-		return
-	}
-
-	_, err = io.Copy(file, resp.Body)
-	if err != nil {
-		return
-	}
-	return
-}
-
-func (api *Osuapi) GetBeatmapSet(beatmapSetId int) (beatmapSet Beatmapset, err error) {
-	url := fmt.Sprintf("/beatmapsets/%d", beatmapSetId)
-	err = api.Request("GET", url, &beatmapSet)
-	if err != nil {
-		return
-	}
-
-	return
-}
-
-func (api *Osuapi) BeatmapsetDownload(beatmapSetId int) (path string, err error) {
-	url := fmt.Sprintf("/beatmapsets/%d/download", beatmapSetId)
-	resp, err := api.Request0("GET", url)
-	if err != nil {
-		return
-	}
-
-	file, err := ioutil.TempFile(os.TempDir(), "beatmapsetDownload")
-	if err != nil {
-		return
-	}
-
-	_, err = io.Copy(file, resp.Body)
-	if err != nil {
-		return
-	}
-	file.Close()
-
-	path = file.Name()
-	return
-}
-
-func (api *Osuapi) GetUser(userId string) (user User, err error) {
-	url := fmt.Sprintf("/users/%s", userId)
-	err = api.Request("GET", url, &user)
-	if err != nil {
-		return
-	}
-
-	return
-}
-
-func (api *Osuapi) GetUserEvents(userId int, limit int, offset int) (events []Event, err error) {
-	url := fmt.Sprintf(
-		"/users/%d/recent_activity?limit=%d&offset=%d",
-		userId,
-		limit,
-		offset,
-	)
-	err = api.Request("GET", url, &events)
-	if err != nil {
-		return
-	}
-
-	return
-}
-
-func (api *Osuapi) SearchBeatmaps(rankStatus string) (beatmapSearch BeatmapSearch, err error) {
-	values := url.Values{}
-	values.Set("s", rankStatus)
-	query := values.Encode()
-	url := "/beatmapsets/search?" + query
-	err = api.Request("GET", url, &beatmapSearch)
 	if err != nil {
 		return
 	}
