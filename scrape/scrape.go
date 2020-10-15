@@ -34,6 +34,8 @@ func RunScraper(config *config.Config, bot *discord.Bot, db *db.Db, api *osuapi.
 			}
 
 			allNewMaps := make(map[int][]osuapi.Beatmapset, 0)
+
+			// add pending maps
 			var newLastUpdateTime = time.Unix(0, 0)
 			for _, beatmapSet := range pendingSets.Beatmapsets {
 				updatedTime, err := time.Parse(time.RFC3339, beatmapSet.LastUpdated)
@@ -58,6 +60,35 @@ func RunScraper(config *config.Config, bot *discord.Bot, db *db.Db, api *osuapi.
 
 					allNewMaps[mapperId] = append(allNewMaps[mapperId], beatmapSet)
 				}
+			}
+
+			// add qualified maps
+			qualifiedSets, err := api.SearchBeatmaps("qualified")
+			if err != nil {
+				log.Println("error fetching pending sets", err)
+			}
+
+			for _, beatmapSet := range qualifiedSets.Beatmapsets {
+				updatedTime, err := time.Parse(time.RFC3339, beatmapSet.LastUpdated)
+				if err != nil {
+					log.Println("error parsing last updated time", updatedTime)
+				}
+
+				if updatedTime.After(newLastUpdateTime) {
+					// update lastUpdateTime to latest updated map
+					newLastUpdateTime = updatedTime
+				}
+
+				if !updatedTime.After(lastUpdateTime) {
+					break
+				}
+
+				mapperId := beatmapSet.UserID
+				if _, ok2 := allNewMaps[mapperId]; !ok2 {
+					allNewMaps[mapperId] = make([]osuapi.Beatmapset, 0)
+				}
+
+				allNewMaps[mapperId] = append(allNewMaps[mapperId], beatmapSet)
 			}
 
 			if len(allNewMaps) > 0 {
