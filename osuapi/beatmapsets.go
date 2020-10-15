@@ -68,3 +68,28 @@ func (api *Osuapi) BeatmapsetDownload(beatmapSetId int) (path string, err error)
 	path = file.Name()
 	return
 }
+
+type GetBeatmapsetEventsOptions struct {
+	User  string
+	Types []string
+}
+
+func (api *Osuapi) GetBeatmapsetEvents(opts *GetBeatmapsetEventsOptions) (events []BeatmapsetEvent, err error) {
+	values := url.Values{}
+	values.Set("user", opts.User)
+	query := values.Encode()
+	for _, t := range opts.Types {
+		query += "&types[]=" + t
+	}
+	url := "/beatmapsets/events?" + query
+	fmt.Println("URL IS", url)
+
+	var reply BeatmapsetEvents
+	err = api.Request("GET", url, &reply)
+	if err != nil {
+		return
+	}
+
+	events = reply.Events
+	return
+}

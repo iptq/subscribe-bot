@@ -63,3 +63,14 @@ type EventUser struct {
 type BeatmapSearch struct {
 	Beatmapsets []Beatmapset `json:"beatmapsets"`
 }
+
+type BeatmapsetEvents struct {
+	Events []BeatmapsetEvent `json:"events"`
+}
+
+type BeatmapsetEvent struct {
+	ID         int        `json:"id"`
+	Type       string     `json:"type"`
+	Beatmapset Beatmapset `json:"beatmapset"`
+	UserID     int        `json:"user_id"`
+}
