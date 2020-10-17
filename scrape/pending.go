@@ -20,6 +20,8 @@ func (s *Scraper) scrapePendingMaps() {
 	pendingSets, err := s.api.SearchBeatmaps("pending")
 	if err != nil {
 		log.Println("error fetching pending sets", err)
+		s.bot.NotifyError("failed to fetch pending sets", err)
+		return
 	}
 
 	allNewMaps := make(map[int][]osuapi.Beatmapset, 0)

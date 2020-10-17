@@ -53,6 +53,12 @@ func NewBot(config *config.Config, db *db.Db, api *osuapi.Osuapi) (bot *Bot, err
 	return
 }
 
+func (bot *Bot) NotifyError(format string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args...)
+	channel, _ := bot.UserChannelCreate("100443064228646912")
+	bot.ChannelMessageSend(channel.ID, msg)
+}
+
 func (bot *Bot) errWrap(fn interface{}) interface{} {
 	val := reflect.ValueOf(fn)
 	origType := reflect.TypeOf(fn)
@@ -66,10 +72,7 @@ func (bot *Bot) errWrap(fn interface{}) interface{} {
 		if len(res) > 0 && !res[0].IsNil() {
 			err := res[0].Interface().(error)
 			if err != nil {
-				msg := fmt.Sprintf("error: %s", err)
-				channel, _ := bot.UserChannelCreate("100443064228646912")
-				id, _ := bot.ChannelMessageSend(channel.ID, msg)
-				log.Println(id, msg)
+				bot.NotifyError("error: %s", err)
 			}
 		}
 		return []reflect.Value{}
