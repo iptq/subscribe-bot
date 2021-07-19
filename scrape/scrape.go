@@ -30,7 +30,6 @@ func RunScraper(config *config.Config, bot *discord.Bot, db *db.Db, api *osuapi.
 	go func() {
 		for ; true; <-Ticker.C {
 			scraper.scrapePendingMaps()
-
 			scraper.scrapeNominatedMaps()
 		}
 	}()

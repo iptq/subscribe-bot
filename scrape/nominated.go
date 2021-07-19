@@ -1,7 +1,6 @@
 package scrape
 
 import (
-	"fmt"
 	"subscribe-bot/osuapi"
 )
 
@@ -11,6 +10,7 @@ func (s *Scraper) scrapeNominatedMaps() {
 	})
 
 	for _, event := range events {
-		fmt.Println(event)
+		(func(_ osuapi.BeatmapsetEvent) {})(event)
+		// fmt.Println(event)
 	}
 }

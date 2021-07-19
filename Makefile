@@ -1,4 +1,4 @@
-GIT_COMMIT = $(shell git rev-list -1 HEAD)
+GIT_COMMIT = $(shell git rev-parse --short HEAD)
 SOURCES = $(shell find . -type f -and -name "*.go" -or -name "*.html")
 
 all: subscribe-bot
